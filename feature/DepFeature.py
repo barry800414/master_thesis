@@ -320,6 +320,6 @@ if __name__ == '__main__':
             y = ally[labelIndex]
             unX = allX[unLabelIndex]
             
-            pObj = { 'X':X, 'unX': unX, 'y':y, 'volcDict': volcDict, 'config': config }
+            pObj = { 'X':X, 'unX': unX, 'y':y, 'mainVolc': volcDict['main'], 'config': config }
             with open('t%d_%s.pickle' % (t, fName),'w+b') as f:
                 pickle.dump(pObj, f)

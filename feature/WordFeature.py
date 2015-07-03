@@ -24,7 +24,7 @@ Date: 2015/05/04
 
 class WordModel:
     def genX(self, labelNewsList, feature='tf', volcDict=None, allowedPOS=None, 
-            minCnt=0, wordGraph=None, wgParams=None):
+            minCnt=None, wordGraph=None, wgParams=None):
         self.setVolcDict(volcDict)
         volc = self.volcDict['main']
         IDF = None
@@ -50,7 +50,9 @@ class WordModel:
                         zeroOne=zeroOne)
         
         # generate X
-        X = toMatrix(newsTFIDF, volc, matrixType='csr')
+        dtype = np.int32 if feature == 'tf' else np.float64
+        X = toMatrix(newsTFIDF, volc, matrixType='csr', dtype=dtype)
+
         # if word graph is given, then run word graph propagation algorithm
         if wordGraph is not None and wgParams is not None:
             print('Doing word graph propagation ...', file=sys.stderr)
@@ -150,7 +152,7 @@ class WordModel:
         return IDF
 
 
-def toMatrix(listOfDict, volc, matrixType='csr'):
+def toMatrix(listOfDict, volc, matrixType='csr', dtype=np.float64):
     rows = list()
     cols = list()
     entries = list()
@@ -163,10 +165,10 @@ def toMatrix(listOfDict, volc, matrixType='csr'):
     numCol = len(volc)
     if matrixType == 'csr':
         m = csr_matrix((entries, (rows, cols)), 
-                shape=(numRow, numCol), dtype=np.float64)
+                shape=(numRow, numCol), dtype=dtype)
     elif matrixType == 'csc':
         m = csc_matrix((entries, (rows, cols)), 
-                shape=(numRow, numCol), dtype=np.float64)
+                shape=(numRow, numCol), dtype=dtype)
     else:
         m = None
     return m
@@ -217,7 +219,7 @@ if __name__ == '__main__':
             y = ally[labelIndex]
             unX = allX[unLabelIndex]
             
-            pObj = { 'X':X, 'unX': unX, 'y':y, 'volcDict': volcDict, 'config': config }
+            pObj = { 'X':X, 'unX': unX, 'y':y, 'mainVolc': volcDict['main'], 'config': config }
             with open('t%d_%s_%s.pickle' % (t, fName, p['feature']),'w+b') as f:
                 pickle.dump(pObj, f)
 

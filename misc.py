@@ -271,8 +271,16 @@ def shrinkCSRMatrixByDF(X, DF, minCnt=0):
                 newData.append(data[nowPos])
             nowPos += 1
 
-    newX = csr_matrix((newData, (newRows, newCols)), shape=(rowNum, len(colMapping)), dtype=np.float64)
+    newX = csr_matrix((newData, (newRows, newCols)), shape=(rowNum, len(colMapping)), dtype=X.dtype)
     return newX
 
         
+
+
+def checkColZero(X):
+    b = np.ones((1, X.shape[0]))
+    for i in range(0, X.shape[1]):
+        sum = int(b * X.getcol(i))
+        if sum == 0:
+            print(i)
 

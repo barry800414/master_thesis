@@ -80,7 +80,7 @@ class RunExp:
         return log
     
     def selfTrainTestNFold(X, y, clfName, scorerName, randSeed=1, test_folds=10,
-            n_folds=10, fSelectConfig=None, prefix='',outfile=sys.stdout, modelDir=None):
+            n_folds=10, fSelectConfig=None, prefix='', outfile=sys.stdout):
         # check data
         if not DataTool.XyIsValid(X, y): #do nothing
             return
@@ -89,9 +89,7 @@ class RunExp:
         # split data in N-fold
         skf = StratifiedKFold(y, n_folds=test_folds, shuffle=True, random_state=randSeed)
         logs = list()
-        testScoreList = list()
-        valScoreList = list()
-        for trainIndex, testIndex in skf:
+        for fId, (trainIndex, testIndex) in enumerate(skf):
             XTrain, XTest = X[trainIndex], X[testIndex]
             yTrain, yTest = y[trainIndex], y[testIndex]
             # do feature selection if config is given
@@ -104,9 +102,8 @@ class RunExp:
                     XTest = selector.transform(XTest)
 
             # training using validation
-            (clf, bestParam, bestValScore, yTrainPredict) = ML.train(XTrain, 
+            (clf, bestParam, trainScore, valScore, yTrainPredict) = ML.train(XTrain, 
                     yTrain, clfName, scorer, randSeed=randSeed, n_folds=n_folds)
-            valScoreList.append(bestValScore)
             if XTest is None or yTest is None:
                 predict = { 'yTrainPredict': yTrainPredict }
             else:
@@ -114,22 +111,14 @@ class RunExp:
                 yTestPredict = ML.test(XTest, clf)
                 # evaluation
                 testScore = Evaluator.evaluate(yTestPredict, yTest)
-                testScoreList.append(testScore)
                 predict = { 'yTrainPredict': yTrainPredict, 'yTestPredict': yTestPredict } 
             
             # to save information of training process for further analysis
-            log = { 'clfName': clfName, 'clf': clf, 'param': bestParam, 'valScore': bestValScore,
-                    'predict': predict, 'testScore': testScore, 'split':{ 'trainIndex': trainIndex, 
-                    'testIndex': testIndex} }
+            log = { 'clfName': clfName, 'clf': clf, 'param': bestParam, 'trainScore': trainScore, 'valScore': valScore,
+                    'predict': predict, 'testScore': testScore, 'split':{ 'trainIndex': trainIndex, 'testIndex': testIndex} }
             logs.append(log)
- 
-        # average NFold results
-        avgValScore = np.mean(valScoreList)
-        avgTestScore = Evaluator.avgNFoldResult(testScoreList)
-
-        # printing out results
-        ResultPrinter.print(prefix + ', selfTrainTest', "%d %d" % (X.shape[0], XTrain.shape[1]), 
-                clfName, scorerName, bestParam, randSeed, avgValScore, avgTestScore, outfile=outfile)
+            ResultPrinter.print('SelfTrainTest', clfName, scorerName, X.shape[1], 
+                    randSeed, fId, trainScore, valScore, testScore[scorerName], outfile=outfile)
 
         return logs
 
@@ -223,34 +212,17 @@ class RunExp:
     # newsIdList: just for record the model
     def runTask(X, y, volcDict, newsIdList, taskType, params, clfName, randSeedList, testSize, n_folds, 
         targetScore, fSelectConfig, topicMap=None, topicId=None):
-        print('X: (%d, %d)' % (X.shape[0], X.shape[1]), file=sys.stderr)
-        expLog = { 'data': { 'X': X, 'y': y } , 'volcDict': volcDict, 'params': params, 'newsIdList': newsIdList }
-        #print(volcDict['main'].volc.keys(), file=sys.stderr)
-        logList = list()
         for randSeed in randSeedList:
             if taskType == 'SelfTrainTest':
-                prefix = "%s, %s, %s" % (topicId, toStr(params), toStr(["content"]))
                 # FIXME: only support self train test now
                 if testSize <= 1.0:
                     log = RunExp.selfTrainTest(X, y, clfName, targetScore, randSeed, testSize, 
                             n_folds, fSelectConfig, prefix)
+                    logList.append(log)
                 else:
-                    log = RunExp.selfTrainTestNFold(X, y, clfName, targetScore, randSeed, 
+                    logs = RunExp.selfTrainTestNFold(X, y, clfName, targetScore, randSeed, 
                             testSize, n_folds, fSelectConfig, prefix=prefix)
-            elif taskType == 'AllTrainTest': 
-                prefix = "%s, %s, %s" % ('all', toStr(params), toStr(["content"]))
-                log = RunExp.allTrainTest(X, y, topicMap, clfName, targetScore, randSeed, testSize, 
-                        n_folds, fSelectConfig, prefix=prefix)
-                logList.append(log)
-                
-            elif taskType == 'LeaveOneTest':
-                prefix = "%s, %s, %s" % (topicId, toStr(params), toStr(["content"]))
-                log = RunExp.leaveOneTest(X, y, topicMap, clfName, targetScore, 
-                        topicId, randSeed, n_folds, fSelectConfig, prefix=prefix)
-            logList.append(log)
-
-        expLog['logList'] = logList
-        return expLog
+                    logList.extend(logs)
 
 def dumpModel(dir, clf):
     tmpF = tempfile.NamedTemporaryFile(mode='w+b', dir=dir, prefix='clf', delete=False)
@@ -649,8 +621,12 @@ class ML:
 
         # testing on training data
         yPredict = clfGS.predict(XTrain)
+        if scorer == 'accuracy':
+            trainScore = accuracy_score(yTrain, yPredict)
+        else:
+            trainScore = scorer.score(yTrain, yPredict)
 
-        return (clfGS.best_estimator_, clfGS.best_params_, bestValScore, yPredict)
+        return (clfGS.best_estimator_, clfGS.best_params_, trainScore, bestValScore, yPredict)
 
     def topicTrain(XTrain, yTrain, clfName, scorerName, trainMap, n_folds, randSeed=1):
         # get classifier and parameters to try
@@ -795,19 +771,23 @@ class ML:
     # FIXME: for the method using classifier, the target score is Accuracy (rather than MacroF1)
     def fSelect(XTrain, yTrain, method, params):
         if method in ["chi", "chi-square"]:
-            if 'top_k' in params:
-                print('Selecting features with top %d chi-square value ...' % params['top_k'], file=sys.stderr) 
-                selector = SelectKBest(chi2, k=params['top_k']).fit(XTrain, yTrain)
+            assert 'top' in params
+            top = float(params['top'])
+            if top < 1.0:
+                print('Selecting features with top %d chi-square value ...' % top, file=sys.stderr) 
+                selector = SelectKBest(chi2, k=top).fit(XTrain, yTrain)
                 newX = selector.transform(XTrain)
-            elif 'percentage' in params:
-                print('Selecting %d%% features with top chi-square value ...' % params['percentage'], file=sys.stderr)
-                selector = SelectPercentile(chi2, percentile=params['percentage']).fit(XTrain, yTrain)
+            else:
+                top = int(top)
+                print('Selecting %d%% features with top chi-square value ...' % top, file=sys.stderr)
+                selector = SelectPercentile(chi2, percentile=top).fit(XTrain, yTrain)
                 newX = selector.transform(XTrain)
+
         elif method in ["rfe", "RFE", 'RecursiveFeatureElimination']:
-            if 'clfConfig' in params and 'n_features_to_select' in params and 'step' in params:
-                print('Selecting features using RecursiveFeatureElimination ...', file=sys.stderr)
-                selector = RFE(clf, params['n_features_to_select'], step=params['step']).fit(XTrain, yTrain)
-                newX = selector.transform(XTrain)
+            assert top in params and 'step' in params
+            print('Selecting features using RecursiveFeatureElimination ...', file=sys.stderr)
+            selector = RFE(clf, params['n_features_to_select'], step=params['step']).fit(XTrain, yTrain)
+            newX = selector.transform(XTrain)
         elif method in ["rfecv", "RFECV"]:  # only applicable to SelfTrainTest
             if 'clfConfig' in params and 'cvConfig' in params and 'step' in params:
                 print('Selecting features using RecursiveFeatureElimination and CrossValidation ...', file=sys.stderr)
@@ -947,18 +927,13 @@ class Evaluator:
 
 class ResultPrinter:
     def printFirstLine(outfile=sys.stdout):
-        print('topicId, model settings, column source,'
-          ' experimental settings, classifier, scorer, dimension,'
-          ' parameters, randSeed, valScore, testScore', file=outfile)
+        print('framework, classifier, scorer, dimension, randSeed, foldNum, train, val, test', file=outfile)
 
     def getDataType():
-        return ('str', 'str', 'str', 'str', 'str', 'str', 'str', 
-                'str', 'int', 'float', 'dict')
-    
-    def print(prefix, Xshape, clfName, scorerName, params, randSeed, 
-            valScore, testScore, outfile):
-        print(prefix, clfName, scorerName, Xshape, toStr(params), randSeed, 
-                valScore, toStr(testScore), sep=',', file=outfile)
+        return ('str', 'str', 'str', 'str', 'int', 'int', 'float', 'float', 'float')
+
+    def print(f, clf, s, d, seed, fid, train, val, test, outfile=sys.stdout):
+        print(f, clf, s, d, seed, fid, train, val, test, sep=',',file=outfile)
 
 # nowBestR: now best result
 def keepBestResult(nowBestR, nextRSList, scorerName, largerIsBetter=True, topicId=None):
