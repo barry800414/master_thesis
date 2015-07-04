@@ -605,7 +605,7 @@ class ML:
         #    kfold = cross_validation.LeaveOneOut(XTrain.shape[0])
 
         # get classifier and parameters to try
-        (clf, parameters) = ML.__genClfAndParams(clfName)
+        (clf, parameters) = ML.genClfAndParams(clfName)
 
         # get grid search classifier
         #print('->grid search ', end='', file=sys.stderr)
@@ -630,7 +630,7 @@ class ML:
 
     def topicTrain(XTrain, yTrain, clfName, scorerName, trainMap, n_folds, randSeed=1):
         # get classifier and parameters to try
-        (clf, parameters) = ML.__genClfAndParams(clfName)
+        (clf, parameters) = ML.genClfAndParams(clfName)
         
         #print('n_folds:%d -> topic grid search ' %(n_folds), end='', file=sys.stderr)
         (bestValScore, bestParams) = ML.topicGridSearchCV(clf, parameters, 
@@ -680,7 +680,7 @@ class ML:
         yPredict = bestClf.predict(XTest)
         return yPredict
 
-    def __genClfAndParams(clfName):
+    def genClfAndParams(clfName):
         if clfName == 'NaiveBayes':
             parameters = {
                 'alpha': [0.5, 1.0, 2.0],

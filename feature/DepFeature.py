@@ -66,7 +66,7 @@ class OpinionModel:
     # negSepList: the list of boolean flag to indicate whether negation pattern is represented separated
     def genX(self, pTreeList, negPList, sentiDict, volcDict, keyTypeList, 
             opnNameList, negSepList, ignoreNeutral, pTreeSepList, countTreeMatched, 
-            minCnt=0, wordGraph=None, wgParams=None):
+            minCnt=None, wordGraph=None, wgParams=None):
         self.pTL = pTreeList
         self.nPL = negPList
         self.kTL = keyTypeList
@@ -130,7 +130,7 @@ class OpinionModel:
         numRow = len(opnCntList)
         numCol = len(self.volcDict['main'])
         X = csr_matrix((entries, (rows, cols)), shape=(numRow, 
-            numCol), dtype=np.float64)
+            numCol), dtype=np.int32)
         
         # remove the words whose document frequency <= threshold
         if minCnt != None:

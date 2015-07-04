@@ -72,6 +72,7 @@ def getLabels(labelNewsList, mapping=label2i):
             labelList.append(mapping[labelNews['label']])
     return labelList
 
+
 # get indexes of labeled and unlabeled data
 def getLabelIndex(lns):
     labelIndex = list()
@@ -271,12 +272,10 @@ def shrinkCSRMatrixByDF(X, DF, minCnt=0):
                 newData.append(data[nowPos])
             nowPos += 1
 
-    newX = csr_matrix((newData, (newRows, newCols)), shape=(rowNum, len(colMapping)), dtype=X.dtype)
+    newX = csr_matrix((newData, (newRows, newCols)), shape=(rowNum, len(colMapping)), dtype=np.float64)
     return newX
 
         
-
-
 def checkColZero(X):
     b = np.ones((1, X.shape[0]))
     for i in range(0, X.shape[1]):
