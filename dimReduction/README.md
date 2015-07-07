@@ -10,3 +10,7 @@ llda.py: Labeled LDA
 
 cmd:
 for i in 2 3 4 5 13; do python3 dimReduction.py ../feature/t${i}_BOW_tf.pickle tfidf 0 -method df -minCnt 5 -outPickle ../feature/t${i}_BOW_tf_dfmin5.pickle -noRun ; done
+
+
+## dimension reduction on multi-level data
+python3 dimReductionSent.py ../feature/t3_BOW_sent_tf.pickle 10 10 1 test.pickle

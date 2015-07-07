@@ -10,7 +10,8 @@ from sklearn.externals.joblib import Parallel, delayed
 from sklearn.base import clone
 
 from RunExperiments import ML, ResultPrinter
-#from analyze import printXY
+
+# the newer version which do not use all labels in training data
 
 libFolder = '/home/r02922010/master_thesis/dimReduction/JGibbLabeledLDA'
 modelFolder='%s/model_folder' % (libFolder)
@@ -30,11 +31,12 @@ def gridSearch(taskName, dataFile, topic, nTopics, nIters, alpha, beta, y, train
         testDocIds.append(docIds)
 
     # dimension reduction for each fold
-    thetaList = Parallel(n_jobs=n_jobs)(
+    allThetaList = Parallel(n_jobs=n_jobs)(
                 delayed(runLLDA)('%s_vfold%d' % (taskName, fi), dataFile, topic, nTopics, nIters, alpha, beta, testDocIds[fi], readTopicWord=False) 
             for fi in range(0, n_folds))
-    for i in range(0, len(thetaList)):
-        thetaList[i] = thetaList[i][trainIndex]
+    thetaList = [None for i in range(0, len(allThetaList))]
+    for i in range(0, len(allThetaList)):
+        thetaList[i] = allThetaList[i][trainIndex]
     
     # create clf & params
     (clf, paramDict) = ML.genClfAndParams(clfName)
@@ -48,6 +50,7 @@ def gridSearch(taskName, dataFile, topic, nTopics, nIters, alpha, beta, y, train
     
     # collecting results to find best parameters
     bestScore = None
+    bestGridStart = None
     n_fits = len(out)
     for grid_start in range(0, n_fits, n_folds):
         avgScore = 0.0
@@ -57,7 +60,13 @@ def gridSearch(taskName, dataFile, topic, nTopics, nIters, alpha, beta, y, train
         if bestScore is None or avgScore > bestScore:
             bestScore = avgScore
             bestParams = out[grid_start]['params']
-    return bestParams, bestScore  #best parameters, and best validation score
+            bestGridStart = grid_start
+
+    allClf = list()
+    for r in out[bestGridStart:bestGridStart + n_folds]:
+        allClf.append(r['clf'])
+
+    return bestParams, bestScore, allThetaList, allClf  #best parameters, and best validation score
 
 
 def oneTask(X, y, trainIndex, testIndex, clf, params):
@@ -70,7 +79,7 @@ def oneTask(X, y, trainIndex, testIndex, clf, params):
     train = accuracy_score(yTrain, yTrainPredict)
     test = accuracy_score(yTest, yTestPredict)
     return { 'test': test, 'train': train, 'yTrainPredict': yTrainPredict, 
-            'yTestPredict': yTestPredict, 'params': params }
+            'yTestPredict': yTestPredict, 'params': params, 'clf': clf }
 
 def runLLDA(taskName, dataFile, topic, nTopics, nIters, alpha, beta, ignoreDocIds, readTopicWord=False):
     dataFile = '%s.gz' % (dataFile)
@@ -117,7 +126,7 @@ def readTheta(gzFile):
                 (index, p) = e.split(':')
                 dist.append(float(p))
             theta.append(dist)
-    return np.array(theta)[:,0:-1]
+    return np.array(theta)
  
 # read top words in each topic
 def readTopicWord(gzFile, nTopics):
@@ -176,11 +185,28 @@ if __name__ == '__main__':
     y = labels[labelIndex]
     kfold = StratifiedKFold(y, n_folds=10, shuffle=True, random_state=randSeed)
     for fid, (trainIndex, testIndex) in enumerate(kfold):
-        (bestParam, bestValScore) = gridSearch(taskName, dataFile, topic, nTopics, nIters, alpha, beta, y, trainIndex, testIndex, 'MaxEnt', n_folds=10, n_jobs=-1)
+        (bestParam, bestValScore, allThetaList, allClf) = gridSearch(taskName, dataFile, topic, nTopics, nIters, alpha, beta, y, trainIndex, testIndex, 'MaxEnt', n_folds=10, n_jobs=-1)
         
+        assert len(allThetaList) == len(allClf)
+        allP = list()
+        for i in range(0, len(allClf)):
+            p = allClf[i].predict(allThetaList[i][testIndex])
+            allP.append(p)
+        allP = np.array(allP)
+        avgP = np.sum(allP, axis=0)
+        for i in avgP:
+            if avgP[i] > 5:
+                avgP[i] = 1
+            else:
+                avgP[i] = 0
+
+        print(accuracy_score(y[testIndex], avgP))
+
         theta, topicWords = runLLDA('%s_fold%d' % (taskName, fid), dataFile, topic, nTopics, nIters, alpha, beta, testIndex, readTopicWord)
         r = oneTask(theta, y, trainIndex, testIndex, clone(clf), bestParam)
+        print(r)
         ResultPrinter.print('SelfTrainTest', 'MaxEnt', 'Accurarcy', theta.shape[1], randSeed, fid, r['train'], bestValScore, r['test']) 
+        
         if outFilePrefix is not None:
             p = { 'X': theta, 'y': y, 'topicWords': topicWords, 'split': { 'trainIndex': trainIndex, 'testIndex': testIndex } }
             with open(outFilePrefix + '_fold%d.pickle' % (fid), 'w+b') as f:

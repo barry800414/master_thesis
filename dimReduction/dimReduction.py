@@ -6,17 +6,18 @@ from tfidf import *
 from RunExperiments import RunExp, ResultPrinter
 
 if __name__ == '__main__':
-    if len(sys.argv) < 4 :
-        print('Usage:', sys.argv[0], 'pickleFile reduceMethod usingUnlabeled(0/1) -param1 value1 -param2 value2 ... [-outPickle filename] [-noRun]', file=sys.stderr)
+    if len(sys.argv) < 5 :
+        print('Usage:', sys.argv[0], 'pickleFile seedNum reduceMethod usingUnlabeled(0/1) -param1 value1 -param2 value2 ... [-outPickle filename] [-noRun]', file=sys.stderr)
         exit(-1)
     
     pickleFile = sys.argv[1]
-    reduceMethod = sys.argv[2]
-    usingUnlabeledData = True if sys.argv[3] == '1' else False
+    seedNum = int(sys.argv[2])
+    reduceMethod = sys.argv[3]
+    usingUnlabeledData = True if sys.argv[4] == '1' else False
     outPickleFile = None
     toRun = True
     param = dict()
-    for i in range(4, len(sys.argv)):
+    for i in range(5, len(sys.argv)):
         if sys.argv[i] == '-outPickle' and len(sys.argv) > i:
             outPickleFile = sys.argv[i+1]
         elif sys.argv[i] == '-noRun':
@@ -50,16 +51,17 @@ if __name__ == '__main__':
         method = param['method']
         if 'top' in param:
             top = int(param['top']) if float(param['top']) > 1.0 else round(float(param['top']) * X.shape[1])
-            newAllX, newVolc, model = reduce(allX, method, top, mainVolc)
+            newAllX, newVolc, model = reduce(allX, method, top, mainVolc, notRemoveRow=True)
         if 'minCnt' in param:
             minCnt = int(param['minCnt'])
-            newAllX, newVolc, model = reduceByDF(allX, minCnt, mainVolc)
+            newAllX, newVolc, model = reduceByDF(allX, minCnt, mainVolc, notRemoveRow=True)
     
     # if using unlabeled data, split it
     if usingUnlabeledData:
-        newX, newunX = newAllX[0:X.shape[0]], newAllX[X.shape[0]:] 
+        newX, newunX = newAllX[0:X.shape[0]], newAllX[X.shape[0]:]  #could cause problem
     else: # otherwise transform it if there is transformer
         newX = newAllX
+        print('Reduction on unlabeled data ...', file=sys.stderr)
         newunX = model.transform(unX) if model is not None else None
     
     # print shape information
@@ -78,5 +80,6 @@ if __name__ == '__main__':
     # run cross-validation testing
     if toRun:
         ResultPrinter.printFirstLine()
-        RunExp.selfTrainTestNFold(newX, y, 'MaxEnt', 'Accuracy', randSeed=1, test_folds=10, n_folds=10, outfile=sys.stdout)
+        for seed in range(1, seedNum):
+            RunExp.selfTrainTestNFold(newX, y, 'MaxEnt', 'Accuracy', randSeed=seed, test_folds=10, n_folds=10, outfile=sys.stdout)
 

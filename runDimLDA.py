@@ -20,20 +20,21 @@ docNum = { 2: 125, 3: 739, 4: 116, 5: 128, 13: 194 }
 
 range1 = [0.1 * i for i in range(1, 11)]
 range2 = [500]
-feature = 'BOW_tf'
+seedNum = 3
+feature = 'baseline2_df3'
 dataFolder = './feature'
 resultFolder = './dimReduction/LDA_result'
 
 for t in [2, 3, 4, 5, 13]:
-    resultFile = 'DimReduction20150702_LDA_t%d.csv' % (t)
+    resultFile = 'DimReduction20150706_LDA_t%d.csv' % (t)
     # reduce to p% of document number
     for usingUnlabeledData in [0, 1]:
         for nT in range1:
             for nI in range2: 
                 nT = round(docNum[t] * nT)
                 taskName = 't%d_%s_LDA_nT%d_nI%d_uX%d' % (t, feature, nT, nI, usingUnlabeledData)
-                cmd = 'python3 ./dimReduction/dimReduction.py %s/t%d_%s_dfmin5.pickle LDA %d -nTopics %d -nIter %d -outPickle %s/%s.pickle > %s/%s_result.csv' % (
-                        dataFolder, t, feature, usingUnlabeledData, nT, nI, resultFolder, taskName, resultFolder, taskName)
+                cmd = 'python3 ./dimReduction/dimReduction.py %s/t%d_%s.pickle %d LDA %d -nTopics %d -nIter %d -outPickle %s/%s.pickle > %s/%s_result.csv' % (
+                        dataFolder, t, feature, seedNum, usingUnlabeledData, nT, nI, resultFolder, taskName, resultFolder, taskName)
                 #print(cmd)
                 #sender.putTask(cmd)
 

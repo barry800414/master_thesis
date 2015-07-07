@@ -18,3 +18,7 @@
 *.dat
 *.model
 *.o
+*.y
+*.Y
+*.X
+*.edgelist

@@ -345,6 +345,7 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "%s RatingFile EvalType(1:RMSE/2:MAE) ModelFile [-options parameter] .... \n", argv[0]);
         fprintf(stderr, "\t[-k LatentDim] [-rate learning rate] [-uReg userReguraization] [-iReg itemRegularization]\n");
         fprintf(stderr, "\t[-iter maxIteration] [-userNetwork file reg] [-itemNetwork file reg] [-seed seed]\n");
+        fprintf(stderr, "\t[-ignoreUserIdFile ignoreUserIdFile]\n");
         return 0;
     }
 

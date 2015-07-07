@@ -23,10 +23,12 @@ Date: 2015/05/04
 '''
 
 
+
 # remove sentences not in allowedPOS set, and get volc
-def preprocessDoc(lnList, volc, allowedPOS):
+def preprocessDoc(lnList, volc, allowedPOS, df=None, minCnt=None):
     if volc is None:
         volc = Volc()
+    
     for i, ln in enumerate(lnList):
         content = ln['news']['content_pos']
         sentList = list()
@@ -36,6 +38,7 @@ def preprocessDoc(lnList, volc, allowedPOS):
                 (w, t) = wt.split('/')
                 if w not in volc and volc.lockVolc: continue
                 if allowedPOS != None and t not in allowedPOS: continue
+                if df is not None and minCnt is not None and df[w] < minCnt: continue
                 if w not in volc: volc.addWord(w)
                 hasWord = True
             if hasWord:
@@ -43,7 +46,26 @@ def preprocessDoc(lnList, volc, allowedPOS):
         ln['news']['content_pos'] = getContent(sentList)
     return lnList, volc
                
+def getDF(lnList, volc, allowedPOS):
+    if volc is None:
+        volc = Volc()
+    
+    df = defaultdict(int)
+    for i, ln in enumerate(lnList):
+        content = ln['news']['content_pos']
+        wordSet = set()
+        for j, sent in enumerate(content.split(',')):
+            for wt in sent.split(' '):
+                (w, t) = wt.split('/')
+                if w not in volc and volc.lockVolc: continue
+                if allowedPOS != None and t not in allowedPOS: continue
+                wordSet.add(w)
+        for w in wordSet:
+            df[w] += 1
+    return df
+
 def getContent(sentList):
+    assert len(sentList) > 0
     content = ''
     for i, sent in enumerate(sentList):
         if i == 0:
@@ -99,15 +121,14 @@ class WordModel:
         # convert to docX 
         rows, cols, data = list(), list(), list()
         nowRow = 0
-        for i, tf in enumerate(sentTF):
-            for j, stf in enumerate(tf):
-                for w, v in stf.items():
-                    if w in volc:
-                        rows.append(i)
-                        cols.append(volc[w])
-                        data.append(v)
-                    else:
-                        print('%s not in volc' % (w), file=sys.stderr) 
+        for i, tf in enumerate(docTF):
+            for w, v in tf.items():
+                if w in volc:
+                    rows.append(i)
+                    cols.append(volc[w])
+                    data.append(v)
+                else:
+                    print('%s not in volc' % (w), file=sys.stderr) 
         dtype = np.int32 if feature == 'tf' else np.float64
         docX = csr_matrix((data, (rows, cols)), shape=(numDoc, len(volc)), dtype=dtype)
 
@@ -134,7 +155,6 @@ class WordModel:
             for j, stf in enumerate(tf):
                 doc2XList[i].append(nowRow)
                 nowRow += 1
-
         return docX, sentX, doc2XList
 
 
@@ -193,7 +213,6 @@ class WordModel:
             for j, stf in enumerate(tf):
                 doc2XList[i].append(nowRow)
                 nowRow += 1
-
         return sentX, doc2XList
 
 # convert original list of doc ids to the list of sentences
@@ -225,14 +244,17 @@ def calcSubjectiveScore(sentSX):
     return scoreList
 
 if __name__ == '__main__':
-    if len(sys.argv) != 4:
-        print('Usage:', sys.argv[0], 'TaggedLabelNewsJson modelConfigFile subjectiveLexion', file=sys.stderr)
+    if len(sys.argv) < 4:
+        print('Usage:', sys.argv[0], 'TaggedLabelNewsJson modelConfigFile subjectiveLexion [minCnt]', file=sys.stderr)
         exit(-1)
     
     # arguments
     segLabelNewsJson = sys.argv[1]
     modelConfigFile = sys.argv[2]
     subjectiveWordFile = sys.argv[3]
+    minCnt = None
+    if len(sys.argv) == 5:
+        minCnt = int(sys.argv[4])
 
     # load label news 
     with open(segLabelNewsJson, 'r') as f:
@@ -260,8 +282,11 @@ if __name__ == '__main__':
     # ============= Run for self-train-test ===============
     for t, lnList in sorted(lnListInTopic.items()):
         for p in paramsIter:
+            (labelDocIds, unLabelDocIds) = getLabelIndex(lnList)
+            labelLnList = [lnList[i] for i in labelDocIds]
+            df = getDF(labelLnList, topicVolcDict[t], p['allowedPOS'])
             # preprocess 
-            (lnList, volc) = preprocessDoc(lnList, topicVolcDict[t], p['allowedPOS'])
+            (lnList, volc) = preprocessDoc(lnList, topicVolcDict[t], p['allowedPOS'], df=df, minCnt=minCnt)
 
             ### generating polarity features ###
             # doc2XList[i]: the list of the sentX's index of doc i
@@ -290,17 +315,18 @@ if __name__ == '__main__':
             allSenty = np.array(expandLabel(getLabels(lnList), doc2XList))
             docy = allDocy[labelDocIds]
             senty = allSenty[labelSentIds]
-
+            
             pObj = { 
                      'docy': docy, 'senty': senty, 
                      'docPX':docPX, 'unDocPX': unDocPX, 'sentPX': sentPX, 'unSentPX': unSentPX, 
-                     'sentSX': sentSX, 'unSentSX': unSentSX,
+                     'sentSX': sentSX, 'unSentSX': unSentSX, 'doc2XList': doc2XList,
                      'mainVolc': volc, 'config': config 
                 }
             
             print('docy:', docy.shape, 'senty:', senty.shape, 'docPX:', docPX.shape, 
                     'unDocPX:', unDocPX.shape, 'sentPX:', sentPX.shape, 'unSentPX:', unSentPX.shape, 
                     'sentSX:', sentSX.shape, 'unSentSX:', unSentSX.shape)
+
 
             with open('t%d_%s_%s.pickle' % (t, fName, p['feature']),'w+b') as f:
                 pickle.dump(pObj, f)
