@@ -6,22 +6,22 @@ from tfidf import *
 from RunExperiments import RunExp, ResultPrinter
 
 if __name__ == '__main__':
-    if len(sys.argv) < 5 :
-        print('Usage:', sys.argv[0], 'pickleFile seedNum reduceMethod usingUnlabeled(0/1) -param1 value1 -param2 value2 ... [-outPickle filename] [-noRun]', file=sys.stderr)
+    if len(sys.argv) < 4 :
+        print('Usage:', sys.argv[0], 'pickleFile reduceMethod usingUnlabeled(0/1) -param1 value1 -param2 value2 ... [-outPickle filename] [-run seedNum]', file=sys.stderr)
         exit(-1)
     
     pickleFile = sys.argv[1]
-    seedNum = int(sys.argv[2])
-    reduceMethod = sys.argv[3]
-    usingUnlabeledData = True if sys.argv[4] == '1' else False
+    reduceMethod = sys.argv[2]
+    usingUnlabeledData = True if sys.argv[3] == '1' else False
     outPickleFile = None
-    toRun = True
+    toRun = False
     param = dict()
-    for i in range(5, len(sys.argv)):
+    for i in range(4, len(sys.argv)):
         if sys.argv[i] == '-outPickle' and len(sys.argv) > i:
             outPickleFile = sys.argv[i+1]
-        elif sys.argv[i] == '-noRun':
-            toRun = False
+        elif sys.argv[i] == '-run' and len(sys.argv) > i:
+            toRun = True
+            seedNum = int(sys.argv[i+1])
         elif sys.argv[i][0] == '-' and len(sys.argv) > i:
             key = sys.argv[i][1:]
             value = sys.argv[i+1]

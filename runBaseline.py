@@ -22,22 +22,22 @@ if ans != 'Y':
     print('exit', file=sys.stderr)
     exit(0)
 
-for t in [2, 3, 4, 5, 13]:
-    resultFile = 'Single20150706_t%d.csv' % (t)
-    for f in ['Dep_PP', 'Dep_PPAll', 'Dep_Full', 'Dep_FullAll', 'Dep_POS', 'Dep_POSAll']:
-        cmd = 'python3 ./classifier/Run.py ./feature/%s/t%d_%s_df2.pickle 3 > ./classifier/single/t%d_%s_df2_results.csv' % (f, t, f, t, f)
+for t in [3, 4, 5, 13]:
+    resultFile = 'baseline20150709_t%d.csv' % (t)
+    for f in ['baseline', 'baseline2']:
+        cmd = 'python3 ./classifier/Run.py ./feature/%s/t%d_%s_df2.pickle 3 > ./classifier/baseline/t%d_%s_df2_results.csv' % (f, t, f, t, f)
         #print(cmd)
         #sender.putTask(cmd)
         #os.system(cmd)
     
-        #cmd = 'python3 CollectResult.py ./classifier/single/t%d_%s_df2_results.csv >> %s' % (t, f, resultFile)
-        #print(cmd)
-        #os.system(cmd)
-    #os.system('echo "" >> %s' % (resultFile))
+        cmd = 'python3 CollectResult.py ./classifier/baseline/t%d_%s_df2_results.csv >> %s' % (t, f, resultFile)
+        print(cmd)
+        os.system(cmd)
+    os.system('echo "" >> %s' % (resultFile))
 
 
 def genTopicRange(docNum):
-    range1 = set(range(2, 11)) | set([round(docNum * 0.01 * i) for i in range(1, 10)]) | set([round(docNum * 0.1 * i) for i in range(1, 11)]) 
+    range1 = set(range(2, 11)) | set([round(docNum * 0.01 * i) for i in range(1, 10)]) | set([round(docNum * 0.1 * i) for i in range(1, 4)]) 
     range1 = sorted(list(range1 - set([1])))
     return range1
 
@@ -47,11 +47,10 @@ docNum = { 2: 125, 3: 739, 4: 116, 5: 128, 13: 194 }
 range2 = [500]
 seedNum =  3
 for t in [3, 4, 5, 13]:
-    resultFile = 'Single20150708_bow_t%d.csv' % (t)
-    #for feature in ['Dep_PP', 'Dep_PPAll', 'Dep_Full', 'Dep_FullAll', 'Dep_POS', 'Dep_POSAll']:
-    for feature in ['BOW_tf']:
+    resultFile = 'baseline20150709_t%d.csv' % (t)
+    for feature in ['baseline', 'baseline2']:
         dataFolder = './feature/%s' % feature
-        resultFolder = './dimReduction/single_LDA_result'
+        resultFolder = './dimReduction/baseline_LDA_result'
         for usingUnlabeledData in [0, 1]:
             # 2 ~ 10, 0.01~0.1 * docNum, 0.1 ~ 1 * docNum
             range1 = genTopicRange(docNum[t])
@@ -62,7 +61,7 @@ for t in [3, 4, 5, 13]:
                     if nT > docNum[t] or nT == 0: 
                         print('nT: ', nT)
                         continue
-                    #cmd = 'python3 ./dimReduction/dimReduction.py %s/t%d_%s_df2.pickle LDA %d -nTopics %d -nIter %d -outPickle %s/%s.pickle -run %d > %s/%s_result.csv' % (dataFolder, t, feature, usingUnlabeledData, nT, nI, resultFolder, taskName, seedNum, resultFolder, taskName)
+                    cmd = 'python3 ./dimReduction/dimReduction.py %s/t%d_%s_df2.pickle LDA %d -nTopics %d -nIter %d -outPickle %s/%s.pickle -run %d > %s/%s_result.csv' % (dataFolder, t, feature, usingUnlabeledData, nT, nI, resultFolder, taskName, seedNum, resultFolder, taskName)
 
                     #print(cmd)
                     #sender.putTask(cmd)

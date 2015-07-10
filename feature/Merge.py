@@ -42,21 +42,22 @@ def mergeVolc(v1, v2):
         newVolc[w] = v2[w] + offset
     return newVolc
 
-def mergePickle(pickleList):
+def mergePickle(pickleList, mergeUnX=True):
     X = None
     unX = None
     y = None
     mainVolc = None
     for p in pickleList:
         print('X:', p['X'].shape, 'y:', p['y'].shape, 'mainVolc:', len(p['mainVolc']), file=sys.stderr)
-        if unX is not None:
-            print('Final unX:', unX.shape, file=sys.stderr)
+        if mergeUnX and unX is not None:
+            print('unX:', unX.shape, file=sys.stderr)
 
         if X is None: X = p['X']
         else: X = mergeX(X, p['X'])
-
-        if unX is None: unX = p['unX']
-        else: unX = mergeX(unX, p['unX'])
+        
+        if mergeUnX:
+            if unX is None: unX = p['unX']
+            else: unX = mergeX(unX, p['unX'])
         
         if y is None: y = p['y']
         else: assert np.array_equal(y, p['y'])
@@ -74,17 +75,19 @@ def mergePickle(pickleList):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) <4 :
-        print('Usage:', sys.argv[0], 'outPickle pickle1 pickle2 ...', file=sys.stderr)
+    if len(sys.argv) < 5 :
+        print('Usage:', sys.argv[0], 'outPickle mergeUnX(0/1) pickle1 pickle2 ...', file=sys.stderr)
         exit(-1)
 
     outPickleFile = sys.argv[1]
+    assert sys.argv[2] in ['0', '1']
+    mergeUnX = True if sys.argv[2] == '1' else False
     pickleList = list()
-    for i in range(2, len(sys.argv)):
+    for i in range(3, len(sys.argv)):
         with open(sys.argv[i], 'r+b') as f:
             pickleList.append(pickle.load(f))
 
-    newP = mergePickle(pickleList)
+    newP = mergePickle(pickleList, mergeUnX)
 
     with open(outPickleFile, 'w+b') as f:
         pickle.dump(newP, f)

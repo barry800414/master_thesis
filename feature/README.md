@@ -14,3 +14,16 @@ for i in 2 3 4 5 13; do python3 ../dimReduction/dimReduction.py t${i}_baseline2.
 ## for generating doc-sentence features
 python3 WordSentFeature.py ../data/taggedLabelNews_5T_Merged_withNoLabel_long.json ../config/WM_sent_config.json ../res/SD_large_new.volc 3
 
+
+## merging best individual features
+BOW: 59, 23, 26, 19
+DepPP: 37, 4, 7, 12
+DepFull: 30, 6, 4, 10
+DepPOS: 8, 10, 10, 8
+
+BOW: 59, 23, 26, 19
+DepPPAll: 30, 12, 9, 8
+DepFullAll: 7, 23, 9, 7
+DepPOSAll: 30, 12, 12, 17
+
+

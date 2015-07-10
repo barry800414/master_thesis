@@ -12,7 +12,8 @@ def printDataFile(filename, docy, sentPX, docPX, sentSX, doc2XList, indexList, o
     with open(filename, 'w') as outfile:
         for di in indexList:
             nSent = len(doc2XList[di])
-            print(docy[di], nSent, sep=' ', file=outfile)
+            y = 1 if docy[di] == 1 else -1
+            print(y, nSent, sep=' ', file=outfile)
             for si in range(0, nSent):
                 print(si, end='', file=outfile)
                 # polarity feature
@@ -69,15 +70,16 @@ def printInitGuessFile(filename, sentIndexList, trainIndex):
             print('', file=outfile)
 
 if __name__ == '__main__':
-    if len(sys.argv) != 5:
-        print('Usage:', sys.argv[0], 'PickleFile Topic Seed GuessPercent', file=sys.stderr)
+    if len(sys.argv) != 6:
+        print('Usage:', sys.argv[0], 'PickleFile Topic Seed GuessPercent outFolder', file=sys.stderr)
         exit(-1)
 
     pickleFile = sys.argv[1]
     topic = int(sys.argv[2])
     seed = int(sys.argv[3])
     percent = float(sys.argv[4])
-    
+    outFolder = sys.argv[5]
+
     with open(pickleFile, 'r+b') as f:
         p = pickle.load(f)
 
@@ -87,8 +89,9 @@ if __name__ == '__main__':
 
     kfold = StratifiedKFold(y, n_folds=10, shuffle=True, random_state=seed)
     for i, (trainIndex, testIndex) in enumerate(kfold):
+        print('Generating data for fold %d ...' % i, file=sys.stderr)
         prefix = 'T%dS%dF%d' % (topic, seed, i)
-        os.system('mkdir -p %s' % (prefix))
+        os.system('mkdir -p %s/%s' % (outFolder, prefix))
 
         # generate validation data
         yTrain = y[trainIndex]
@@ -96,13 +99,13 @@ if __name__ == '__main__':
         for j, (valTrainIndex, valTestIndex) in enumerate(valKfold):
             realTrainIndex = [trainIndex[i] for i in valTrainIndex]
             realTestIndex = [trainIndex[i] for i in valTestIndex]
-            prefix2 = '%s/%sV%d' % (prefix, prefix, j)
+            prefix2 = '%s/%s/%sV%d' % (outFolder, prefix, prefix, j)
             printDataFile('%s.train' % (prefix2), y, sentPX, docPX, sentSX, doc2XList, realTrainIndex)
             printDataFile('%s.test' % (prefix2), y, sentPX, docPX, sentSX, doc2XList, realTestIndex)
             printInitGuessFile('%s.init' % (prefix2), guessSentList, realTrainIndex)
-            break
+        
         # generate training and testing data
-        printDataFile('%s/%s.train' % (prefix, prefix), y, sentPX, docPX, sentSX, doc2XList, trainIndex)
-        printDataFile('%s/%s.test' % (prefix, prefix), y, sentPX, docPX, sentSX, doc2XList, testIndex)
-        printInitGuessFile('%s/%s.init' % (prefix, prefix), guessSentList, trainIndex)
-        break
+        prefix2 = '%s/%s/%s' % (outFolder, prefix, prefix)
+        printDataFile('%s.train' % (prefix2), y, sentPX, docPX, sentSX, doc2XList, trainIndex)
+        printDataFile('%s.test' % (prefix2), y, sentPX, docPX, sentSX, doc2XList, testIndex)
+        printInitGuessFile('%s.init' % (prefix2), guessSentList, trainIndex)
