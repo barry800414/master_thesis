@@ -15,6 +15,14 @@ elseif strcmp(method, 'Least_Trace') == 1
     predict = sign(X * w);
 elseif strcmp(method, 'Logistic_Trace') == 1
     predict = sign(X * w + c);     
+elseif strcmp(method, 'Least_Dirty') == 1
+    predict = sign(X * w);
+elseif strcmp(method, 'Least_SparseTrace') == 1
+    predict = sign(X * w);
+elseif strcmp(method, 'Least_CASO') == 1
+    predict = sign(X * w);
+elseif strcmp(method, 'Logistic_CASO') == 1
+    predict = sign(X * w + c);  
 end 
 acc = nnz(predict == y)/length(y);
 

@@ -1,5 +1,5 @@
 
-function [ avgTestAcc ] = RunTask( dataFile, method, seedNum, outFilePrefix )
+function [ avgTestAcc ] = RunTask2( dataFile, method, seedNum, outFilePrefix )
 
 addpath('/home/r02922010/package/MALSAR/MALSAR/utils/')
 addpath('/home/r02922010/package/MALSAR/MALSAR/functions/Lasso/')
@@ -56,14 +56,19 @@ for seed=1:seedNum
             YTrain{t} = Y{t}(kfold{t} ~= fi, :);
             YTest{t} = Y{t}(kfold{t} == fi, :);
         end
-        % using cross-validation to search best parameter
-        [ p1, valAcc ] = GridSearchCV( XTrain, YTrain, ...
-            foldNum, seed, method, p1Range, opts );
-        p1
+        % using cross-validation to search best parameter 
+        % (p(1) to p(N) are for individual, p(N+1) are for all mixed)
+        [ p, valAcc ] = GridSearchCV2( XTrain, YTrain, ...
+            foldNum, seed, method, pRange, opts );
+        p
         % testing on testing set
-        [ W, c, YTrainPredict, trainAcc, YTestPredict, testAcc ] = TrainTest( ...
-            XTrain, YTrain, XTest, YTest, method, p1, opts);
-     
+        trainAcc = zeros(taskNum, 1);
+        testAcc = zeros(taskNum, 1);
+        for t=1:taskNum
+            [ W, c, YTrainPredict, trainAcc(t), YTestPredict, testAcc(t) ] = TrainTestSingleTask( ...
+                XTrain, YTrain, XTest, YTest, method, p(t), opts, t);
+        end
+
         weightedTrainAcc = taskProp * trainAcc ;
         weightedValAcc = taskProp * valAcc ;
         weightedTestAcc = taskProp * testAcc ;

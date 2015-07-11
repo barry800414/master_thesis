@@ -19,7 +19,7 @@ bestP1 = 0.0;
 bestAcc = zeros(taskNum, 1);
 bestWeightedAcc = -1.0;
 for p1 = p1Range
-    fprintf('search at p1:%f\n', p1);
+    fprintf(2, 'search at p1:%f\n', p1);
     avgTestAcc = KFoldTrainTest(X, Y, foldNum, seed, method, p1, opts);
     % calcualte weighted average as validation score
     weightedAcc = avgTestAcc' * taskProp;
