@@ -11,19 +11,27 @@ from misc import *
 from Volc import *
 
 # vocab is a list (index -> word mapping)
-def runLDA(W, vocab=None, nTopics=10, nIter=10, nTopicWords=10, randomState=1, outfile=sys.stdout):
+def runLDA(W, volc=None, nTopics=10, nIter=10, nTopicWords=1000, randomState=1, outfile=sys.stdout):
     if nTopicWords == -1:
         nTopicWords = len(vocab) # all words
     model = lda.LDA(n_topics=nTopics, n_iter=nIter, random_state=randomState)
     model.fit(W)
-    if vocab is not None:
+    if volc is not None:
+        vocab = geti2W(volc)
         topicWord = model.topic_word_
-        topicWordList = list()
+        newVolc = Volc() # use top N words as volcabulary
         for i, topicDist in enumerate(topicWord):
             topicWords = list(np.array(vocab)[np.argsort(topicDist)][:-nTopicWords:-1])
-            topicWordList.append(topicWords)
-            print('Topic {}: {}'.format(i, ' '.join(topicWords)), file=outfile)
-    return model
+            newVolc.addWord(toStr(topicWords))
+        return model, volc
+    else:
+        return model
+
+def geti2W(volc):
+    if volc is None:
+        return None
+    i2w = [volc.getWord(i) for i in range(0, len(volc))]
+    return i2w
 
 # print Topic-Word Matrix [topicNum x wordNum] (phi in literature)
 def printTWMatrix(model, i2w, encoding='utf-8', outfile=sys.stdout):

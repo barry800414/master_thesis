@@ -1,11 +1,10 @@
-function [ model ] = Train( X, Y, method, p, opts )
+function [ model ] = Train( X, Y, method, p, opts)
 %TRAIN Summary of this function goes here
 % p is a struct of paremeters (p1, p2, k ...)
 % model is a struct of trained parameters (weight matrix, bias ...)
 %   Detailed explanation goes here
 
-c = zeros(1, length(Y));
-
+model.c = zeros(1, length(Y));
 if strcmp(method, 'Least_Lasso') == 1
     model.W = Least_Lasso(X, Y, p.p1, opts);
 elseif strcmp(method, 'Logistic_Lasso') == 1

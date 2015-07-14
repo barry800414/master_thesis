@@ -930,7 +930,11 @@ class ResultPrinter:
         print('framework, classifier, scorer, dimension, randSeed, foldNum, train, val, test', file=outfile)
 
     def getDataType():
-        return ('str', 'str', 'str', 'str', 'int', 'int', 'float', 'float', 'float')
+        return ('str', 'str', 'str', 'str', 'int', 'int', 'float', 'float', 'float', 
+                'float', 'float', 'float', 
+                'float', 'float', 'float', 
+                'float', 'float', 'float', 
+                'float', 'float', 'float')
 
     def print(f, clf, s, d, seed, fid, train, val, test, outfile=sys.stdout):
         print(f, clf, s, d, seed, fid, train, val, test, sep=',',file=outfile)

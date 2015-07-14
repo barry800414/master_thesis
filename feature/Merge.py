@@ -36,7 +36,7 @@ def mergeX(x1, x2):
     return newX
 
 def mergeVolc(v1, v2):
-    newVolc = v1.copy()
+    newVolc = v1.copy(lock=False)
     offset = len(newVolc)
     for w in v2.volc.keys():
         newVolc[w] = v2[w] + offset

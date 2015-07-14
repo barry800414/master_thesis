@@ -4,8 +4,11 @@ import queue
 import sys
 
 if __name__ == '__main__':
-    q = queue.Queue()
     port = 3333
+    if len(sys.argv) == 2:
+        port = int(sys.argv[1])
+
+    q = queue.Queue()
     # a QueueManager hold a queue q, which automatically handle race condition
     class QueueManager(BaseManager):
         pass

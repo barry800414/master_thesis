@@ -27,3 +27,7 @@ DepFullAll: 7, 23, 9, 7
 DepPOSAll: 30, 12, 12, 17
 
 
+# for generating shareVolc features (baseline1 and baseline2), all of them are df2. Output: tX_v1_shareVolc.pickle and tX_v2_shareVolc.pickle
+for i in 3 4 5 13; do python3 Merge.py t${i}_v1_shareVolc.pickle 0 ./BOW_tf_shareVolc/t${i}_BOW_tf_shareVolc.pickle ./Dep_PP_shareVolc/t${i}_Dep_PP_shareVolc.pickle ./Dep_Full_shareVolc/t${i}_Dep_Full_shareVolc.pickle ./Dep_POS_shareVolc/t${i}_Dep_POS_shareVolc.pickle; done
+for i in 3 4 5 13; do python3 Merge.py t${i}_v2_shareVolc.pickle 0 ./BOW_tf_shareVolc/t${i}_BOW_tf_shareVolc.pickle ./Dep_PPAll_shareVolc/t${i}_Dep_PPAll_shareVolc.pickle ./Dep_FullAll_shareVolc/t${i}_Dep_FullAll_shareVolc.pickle ./Dep_POSAll_shareVolc/t${i}_Dep_POSAll_shareVolc.pickle; done
+

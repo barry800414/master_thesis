@@ -11,6 +11,8 @@ QueueManager.register('get_queue')
 
 if __name__ == '__main__':
     port = 3333
+    if len(sys.argv) == 2:
+        port = int(sys.argv[1])
     server_address = ('140.112.187.33', port)
     authkey = b'barry800414'
     m = QueueManager(address = server_address, authkey = authkey)

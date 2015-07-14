@@ -1,4 +1,4 @@
-function [ bestP1, bestAcc ] = GridSearchCV2( X, Y, foldNum, seed, method, pRange, opts )
+function [ bestP, bestAcc ] = GridSearchCV2( X, Y, foldNum, seed, method, pRange, opts )
 %TRAINVALTEST Summary of this function goes here
 % bestP1: the best parameter p1 by grid search 
 % bestWeightedAcc: the best weighted average at that parameter
@@ -15,7 +15,7 @@ end
 taskProp = taskProp / sum(taskProp);
 
 % 10-fold testing 
-bestP1 = cell(taskNum, 1); % p{t} is the best parameter(struct) for each task t
+bestP = cell(taskNum, 1); % p{t} is the best parameter(struct) for each task t
 bestAcc = zeros(taskNum, 1);
 
 oneParamMethod = { 'Least_Lasso', 'Logistic_Lasso', 'Least_L21', 'Logistic_L21', 'Least_Trace', 'Logistic_Trace' };
@@ -24,43 +24,49 @@ threeParamMethod = { 'Least_CASO', 'Logistic_CASO' };
 
 if ismember(method, oneParamMethod)
     for p1 = pRange.p1Range
-        fprintf(2, 'search at p1:%f\n', p1);
+        fprintf(2, 'search at p1:%f ', p1);
         p.p1 = p1;
         avgTestAcc = KFoldTrainTest(X, Y, foldNum, seed, method, p, opts);
         for t=1:taskNum
+            fprintf(2, ' t%d: %.3f', t, avgTestAcc(t));
             if avgTestAcc(t) > bestAcc(t)
-                bestP1{t} = p1;
+                bestP{t} = p;
                 bestAcc(t) = avgTestAcc(t);
             end
         end
+        fprintf(2, '\n');
     end
-else if ismember(method, twoParamMethod)
+elseif ismember(method, twoParamMethod)
     for p1 = pRange.p1Range
         for p2 = pRange.p2Range
-            fprintf(2, 'search at p1:%f p2:%f\n', p1, p2);
+            fprintf(2, 'search at p1:%f p2:%f', p1, p2);
             p.p1 = p1; p.p2 = p2;
             avgTestAcc = KFoldTrainTest(X, Y, foldNum, seed, method, p, opts);
             for t=1:taskNum
+                fprintf(2, ' t%d: %.3f', t, avgTestAcc(t));
                 if avgTestAcc(t) > bestAcc(t)
-                    bestP1{t} = p1;
+                    bestP{t} = p;
                     bestAcc(t) = avgTestAcc(t);
                 end
             end
+            fprintf(2, '\n');
         end
     end
-else if ismember(method, threeParamMethod)
+elseif ismember(method, threeParamMethod)
     for p1 = pRange.p1Range
         for p2 = pRange.p2Range
             for k = pRange.kRange
-                fprintf(2, 'search at p1:%f p2:%f k:%d\n', p1, p2, k);    
+                fprintf(2, 'search at p1:%f p2:%f k:%d', p1, p2, k);    
                 p.p1 = p1; p.p2 = p2; p.k = k;
                 avgTestAcc = KFoldTrainTest(X, Y, foldNum, seed, method, p, opts);
                 for t=1:taskNum
+                    fprintf(2, ' t%d: %.3f', t, avgTestAcc(t));
                     if avgTestAcc(t) > bestAcc(t)
-                        bestP1{t} = p1;
+                        bestP{t} = p;
                         bestAcc(t) = avgTestAcc(t);
                     end
                 end
+                fprintf(2, '\n');
             end
         end
     end

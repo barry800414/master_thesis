@@ -1,16 +1,12 @@
 
 function [ avgTestAcc ] = RunTask( dataFile, method, seedNum, outFilePrefix )
 
-addpath('/home/r02922010/package/MALSAR/MALSAR/utils/')
-addpath('/home/r02922010/package/MALSAR/MALSAR/functions/Lasso/')
-addpath('/home/r02922010/package/MALSAR/MALSAR/functions/joint_feature_learning/')
-addpath('/home/r02922010/package/MALSAR/MALSAR/functions/low_rank/')
+LoadPackage();
 
 % setting
 %seed = 1;
 foldNum = 10;
-p1Range = 2.^(-13:2:5);
-%method = 'Logistic_Lasso';
+pRange = ParamRange(method);
 opts.init = 0;      % guess start point from data.
 opts.tFlag = 1;     % terminate after relative objective value does not changes much.
 opts.tol = 10^-6;   % tolerance.
@@ -18,6 +14,11 @@ opts.maxIter = 1500; % maximum iteration number of optimization.
 
 % read in files: X, Y of t task
 load(dataFile);
+%if strcmp(method, 'Least_Dirty') == 1
+%    for t=1:length(Y)
+%        Y{t} = int32(Y{t});
+%    end
+%end
 
 % open result file to write
 fout = fopen(strcat(outFilePrefix, '_result.csv'), 'w');
@@ -57,13 +58,12 @@ for seed=1:seedNum
             YTest{t} = Y{t}(kfold{t} == fi, :);
         end
         % using cross-validation to search best parameter
-        [ p1, valAcc ] = GridSearchCV( XTrain, YTrain, ...
-            foldNum, seed, method, p1Range, opts );
-        p1
+        [ p, valAcc ] = GridSearchCV( XTrain, YTrain, ...
+            foldNum, seed, method, pRange, opts );
+        PrintParam(p);
         % testing on testing set
-        [ W, c, YTrainPredict, trainAcc, YTestPredict, testAcc ] = TrainTest( ...
-            XTrain, YTrain, XTest, YTest, method, p1, opts);
-     
+        [ model, YTrainPredict, trainAcc, YTestPredict, testAcc ] = TrainTest( ...
+            XTrain, YTrain, XTest, YTest, method, p, opts);
         weightedTrainAcc = taskProp * trainAcc ;
         weightedValAcc = taskProp * valAcc ;
         weightedTestAcc = taskProp * testAcc ;

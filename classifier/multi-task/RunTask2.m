@@ -1,15 +1,12 @@
 
 function [ avgTestAcc ] = RunTask2( dataFile, method, seedNum, outFilePrefix )
 
-addpath('/home/r02922010/package/MALSAR/MALSAR/utils/')
-addpath('/home/r02922010/package/MALSAR/MALSAR/functions/Lasso/')
-addpath('/home/r02922010/package/MALSAR/MALSAR/functions/joint_feature_learning/')
-addpath('/home/r02922010/package/MALSAR/MALSAR/functions/low_rank/')
+LoadPackage();
 
 % setting
 %seed = 1;
 foldNum = 10;
-p1Range = 2.^(-13:2:5);
+pRange = ParamRange(method);
 %method = 'Logistic_Lasso';
 opts.init = 0;      % guess start point from data.
 opts.tFlag = 1;     % terminate after relative objective value does not changes much.
@@ -60,13 +57,13 @@ for seed=1:seedNum
         % (p(1) to p(N) are for individual, p(N+1) are for all mixed)
         [ p, valAcc ] = GridSearchCV2( XTrain, YTrain, ...
             foldNum, seed, method, pRange, opts );
-        p
+        PrintParam(p);
         % testing on testing set
         trainAcc = zeros(taskNum, 1);
         testAcc = zeros(taskNum, 1);
         for t=1:taskNum
-            [ W, c, YTrainPredict, trainAcc(t), YTestPredict, testAcc(t) ] = TrainTestSingleTask( ...
-                XTrain, YTrain, XTest, YTest, method, p(t), opts, t);
+            [ model, YTrainPredict, trainAcc(t), YTestPredict, testAcc(t) ] = TrainTestSingleTask( ...
+                XTrain, YTrain, XTest, YTest, method, p{t}, opts, t);
         end
 
         weightedTrainAcc = taskProp * trainAcc ;

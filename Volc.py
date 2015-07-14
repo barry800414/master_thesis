@@ -21,7 +21,6 @@ class Volc:
         self.volc = dict() # word -> index (many-to-one)
         self.rVolc = list() # index words (one-to-many)
         self.lockVolc = False
-        self.OOVDim = -1
 
     def load(self, filename):
         volc = dict()
@@ -51,7 +50,6 @@ class Volc:
         newVolc.volc = dict(self.volc)
         newVolc.rVolc = list(self.rVolc)
         newVolc.lockVolc = lock
-        newVolc.OOVDim = self.OOVDim
         return newVolc
 
     # index must be from 0 to n-1
@@ -82,9 +80,7 @@ class Volc:
 
     def addWord(self, word):
         if word not in self.volc:
-            if self.lockVolc:
-                self.__setitem__(word, self.OOVDim)
-            else:
+            if not self.lockVolc:
                 self.__setitem__(word, self.__len__())
 
     def __contains__(self, index):
@@ -121,10 +117,7 @@ class Volc:
     def getWordList(self, index):
         return self.rVolc[index]
 
-    # when lock is True, all new words are viewed as OOV
     def lock(self):
-        if self.OOVDim == -1:
-            self.OOVDim = len(self.rVolc)
         self.lockVolc = True
 
     def unlock(self):
@@ -162,7 +155,6 @@ class Volc:
 
         return newDF
 
-    #FIXME: dealing with OOV problem
     def mergeVolc(volc1, volc2):
         if volc1 == None:
             if volc2 == None:
