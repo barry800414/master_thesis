@@ -16,19 +16,11 @@ k2 = size(F_subj{1}); k2 = k2(2);
 %% parameter settings
 foldNum = 10;
 [c1Range, c2Range] = ParamRange( method, update);
-%c1Range = 2.^(-15:2:7);
 params.learn_rate = learn_rate; 
 params.maxIter = maxIter;
 params.update = update;
 params.tol = 1e-5;
 params.stop = stop;
-params.scale = 1.1;
-%k1 = size(F_sta{1}); k1=k1(2)+1;
-%k2 = size(F_subj{1}); k2=k2(2)+1;
-
-%params.w_sta = rand(k1, 1)/(k1*k2);
-%params.w_subj = rand(k2, 1)/(k1*k2);
-
 fprintf(2, 'method:%s learn_rate:%f maxIter:%d update:%s tol:%f stop:%s\n', method, learn_rate, maxIter, update, params.tol, stop);
 
 %% training and testing 
@@ -38,19 +30,19 @@ fprintf(2, 'In Seed:%d fold %d ... \n', seed, fid);
 % get training and testing data of each task
 [XTrain, yTrain, XTest, yTest] = split(X, y, kfold, fid);
 
-% using best parameters to train classifier, and test it on testing data
-
-predict = zeros(length(yTest), 1);
+% using best parameters to train classifier, and test it on testing
+% data
 for c1=c1Range
     c2=c1;
+    %for c2=c2Range
     fprintf(2, 'c1:%f c2:%f\n', c1, c2);
-    %[ model, F_train, F_test, iter, trainR, testR ] = trainLineSearch( method, XTrain, yTrain, c1, c2, ...
-    %        params, 1, XTest, yTest );
-    [ model, F_train, F_test, iter, trainAcc, testAcc ] = train( method, XTrain, yTrain, c1, c2, ...
-            params, debugLevel, XTest, yTest );
+    [ model, F_train, F_test, trainR, valR ] = trainLineSearch( method, ...
+        XTrain, yTrain, c1, c2, params, 2, XTest, yTest );
 
-    %fprintf(2, 'iter:%d trainAcc:%f testAcc:%f\n', iter, trainR.acc, testR.acc);
-    fprintf(2, 'iter:%d trainAcc:%f testAcc:%f\n', iter, trainAcc, testAcc);
+    [ trainAcc, yTrainPredict ] = test( method, F_train, yTrain, model );
+    [ testAcc, yTestPredict ] = test( method, F_test, yTest, model );
+    fprintf('train: %f test:%f', trainAcc, testAcc);
 
+    %end
 end
 end

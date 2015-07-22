@@ -1,88 +1,115 @@
 
 import sys, pickle, json
 from collections import defaultdict
+from misc import *
+from ErrorAnalysis import *
+from Color import *
 
-def getTopic(filename):
-    s = filename.find('SelfTrainTest_topic')
-    e = filename.find('.pickle')
-    t = int(filename[s+len('SelfTrainTest_topic'): e])
-    return t
-
-def calcErrNewsCnt(p, newsTestCnt, newsErrCnt, t):
-    X = p['data']['X']
-    y = p['data']['y']
-    newsIdList = p['newsIdList']
-    logList = p['logList']
-    for log in logList:
+def calcErrNewsCnt(logP, y, topic, testCnt, errCnt):
+    for log in logP:
         clf = log['clf']
         testIndex = log['split']['testIndex']
         yTest = y[testIndex]
         yTestPredict = log['predict']['yTestPredict']
         assert len(yTest) == len(yTestPredict)
-        for i in range(0, len(yTest)):
-            newsId = newsIdList[testIndex[i]]
-            if yTest[i] != yTestPredict[i]:
-                newsErrCnt[newsId] += 1
-            newsTestCnt[newsId] += 1
+        for newI, oldI in enumerate(testIndex):
+            if yTest[newI] != yTestPredict[newI]:
+                errCnt[oldI] += 1
+            testCnt[oldI] += 1
                 
+# read label mapping 
+def readLabelMapping(filename):
+    newMap = list()
+    oldMap = list()
+    with open(filename, 'r') as f:
+        entry = f.readline().strip().split(' ')
+        topic = int(entry[0])
+        num = int(entry[1])
+        for line in f:
+            entry = line.strip().split(' ')
+            newMap.append(entry[0])
+            oldMap.append(entry[1])
+        assert len(newMap) == num
+    return topic, newMap, oldMap
 
-if len(sys.argv) != 4:
-    print('Usage:', sys.argv[0], 'fileList lnJson_OriginalLabel lnJson_NowLabel', file=sys.stderr)
-    exit(-1)
+# read label-news json file
+def readLnList(filename):
+    with open(filename, 'r') as f:
+        lnList = json.load(f)
+    topicLnList = divideLabelNewsByTopic(lnList)
+    topicNewsId = { t: [ln['news_id'] for ln in lns] for t, lns in topicLnList.items() }
+    return lnList, topicLnList, topicNewsId
 
-original = dict()
-with open(sys.argv[2], 'r') as f:
-    lnList = json.load(f)
-for ln in lnList:
-    t = ln['statement_id']
-    newsId = ln['news_id']
-    if t not in original:
-        original[t] = dict()
-    original[t][newsId] = ln['label']
 
-newsDict = dict()
-now = dict()
-with open(sys.argv[3], 'r') as f:
-    lnList = json.load(f)
-for ln in lnList:
-    t = ln['statement_id']
-    newsId = ln['news_id']
-    if t not in now:
-        now[t] = dict()
-    now[t][newsId] = ln['label']
-    newsDict[newsId] = ln['news']
+def getWordColorMap(clf, volc, c1Color, c0Color, topN):
+    coef = clf.coef_
+    cNum = coef.shape[0] # classNum
+    cList = clf.classes_
+    
+    fNum = coef.shape[1] # feature number
+    cValues = list()
+    values = [(i, v) for i, v in enumerate(coef[0])]
+    values.sort(key=lambda x:x[1], reverse=True)
+    
+    c1WordSet = set([volc.getWord(i) for i,v in values[0:topN]])
+    c0WordSet = set([volc.getWord(i) for i,v in values[-topN:]])
 
-topicNewsErrCnt = dict()
-topicNewsTestCnt = dict()
-with open(sys.argv[1], 'r') as f:
-    for line in f:
-        filename = line.strip()
-        t = getTopic(filename)
-        if t not in topicNewsErrCnt:
-            topicNewsTestCnt[t] = defaultdict(int)
-            topicNewsErrCnt[t] = defaultdict(int)
+    wc = dict()
+    for w in c1WordSet:
+        wc[w] = c1Color
+    for w in c0WordSet:
+        wc[w] = c0Color
+    return wc
+
+def colorTaggedText(text, wordColorMap):
+    outStr = ''
+    for sent in text.split(','):
+        for wt in sent.split(' '):
+            (w, t) = wt.split('/')
+            if w in wordColorMap:
+                outStr += cm[wordColorMap[w]] + w + cm['no']  # cm: color mapping
+            else:
+                outStr += w
+        outStr += ','
+    return outStr
+
+if __name__ == '__main__':
+    if len(sys.argv) < 5:
+        print('Usage:', sys.argv[0], 'dataPickle labelMappingFile labelNewsJsonFile logPickle1 logPickle2 ...', file=sys.stderr)
+        exit(-1)
+
+    # load data pickle
+    with open(sys.argv[1], 'r+b') as f:
+        dataP = pickle.load(f)
+    y = dataP['y']
+    # read label mapping file
+    topic, newMap, oldMap = readLabelMapping(sys.argv[2])
+    # read label news json file
+    lnList, topicLnList, topicNewsId = readLnList(sys.argv[3])
+
+    errCnt = [0 for i in range(0, len(topicLnList[topic]))]
+    testCnt = [0 for i in range(0, len(topicLnList[topic]))]
+
+    for i in range(4, len(sys.argv)):
+        filename = sys.argv[i]
         print('Loading pickle file:', filename, file=sys.stderr)
         with open(filename, 'r+b') as f:
-            p = pickle.load(f)
-        calcErrNewsCnt(p, topicNewsTestCnt[t], topicNewsErrCnt[t], t)
+            logP = pickle.load(f)
+        calcErrNewsCnt(logP, y, topic, testCnt, errCnt)
 
-for t, testCnt in sorted(topicNewsTestCnt.items(), key=lambda x:x[0]):
-    errRate = list()
-    errCnt = topicNewsErrCnt[t]
-    print('=======Topic:%d=======' % (t))
-    for newsId, cnt in testCnt.items():
-        if newsId in errCnt:
-            errRate.append((newsId, cnt, errCnt[newsId], errCnt[newsId] / cnt))
-        else:
-            errRate.append((newsId, cnt, 0, 0.0))
+
+    # prepare coloring contents
+    clf = logP[0]['clf']
+    volc = dataP['mainVolc']
+    topN = 100
+    wordColorMap = getWordColorMap(clf, volc, 'green', 'red', topN)
     
-    # sort by error rate (descending)
-    errRate.sort(key=lambda x:x[3], reverse=True)
-    for c in errRate:
-        newsId = c[0]
-        oriId = original[t][newsId] 
-        nowId = now[t][newsId] 
-        print(c[0], c[1], c[2], c[3], oriId, nowId)
-        if c[3] > 0.9 or c[3] < 0.05:
-            print(newsDict[newsId])
-    print('---------------------------------------------------\n')
+    errRate = [(i, errCnt[i]/testCnt[i]) for i in range(0, len(errCnt))]
+    errRate.sort(key = lambda x:x[1], reverse=True)
+    for i, rate in errRate:
+        print('Error Rate: %f(%d/%d)' % (rate, errCnt[i], testCnt[i]), end='')
+        print(' new:%s  old:%s' % (newMap[i], oldMap[i]))
+        print('News:', colorTaggedText(topicLnList[topic][i]['news']['content_pos'], wordColorMap))
+        print('-'*100)
+
+    

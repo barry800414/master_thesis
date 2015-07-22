@@ -9,70 +9,23 @@ from sklearn.svm import LinearSVC
 from sklearn.metrics import confusion_matrix, accuracy_score
 from misc import *
 
-# depricated
-def printIntercept(clf, classMap, outfile=sys.stderr):
-    supportIntercept = [MultinomialNB, LogisticRegression]
-    if type(clf) in supportIntercept:
-        print('Intercept (class bias):', file=outfile)
-        for ci in range(0, len(clf.classes_)):
-            print('Class %s' % classMap[clf.classes_[ci]], clf.intercept_[ci], sep=',', file=outfile)
-    else:
-        return 
-
-# depricated
-def printDenseMatrix(m, volc, outfile=sys.stdout):
-    assert m.shape[1] == len(volc)
-    
-    for i in range(0, len(volc)):
-        print(volc.getWord(i), end=',', file=outfile)
-    print('', file=outfile)
-    for row in m:
-        for i in range(0, m.shape[1]):
-            print(row[i], end=',', file=outfile)
-        print('', file=outfile)
-
-# depricated
-def printCSRMatrix(m, volc, outfile=sys.stdout):
-    assert m.shape[1] == len(volc)
-    
-    (rowNum, colNum) = m.shape
-    colIndex = m.indices
-    rowPtr = m.indptr
-    data = m.data
-    nowPos = 0
-    
-    sumOfCol = [0.0 for i in range(0, colNum)]
-    for ri in range(0, rowNum):
-        for ci in colIndex[rowPtr[ri]:rowPtr[ri+1]]:
-            value = data[nowPos]
-            word = volc.getWord(ci)
-            print('(%d/%s):%.2f' % (ci, toStr(word, ensure_ascii=False), value), end=',', file=outfile)
-            sumOfCol[ci] += value
-            nowPos += 1
-        print('', file=outfile)
-
-    for ci in range(0, colNum):
-        word = volc.getWord(ci)
-        print('(%d/%s):%.2f' % (ci, toStr(word, ensure_ascii=False), sumOfCol[ci]), file=outfile)
-    #print('', file=outfile)
-
 # print Coefficients in classifier
 # clf: classifier
 # volc: volc -> index (dict) for each column (feature)
 # classMap: class-> text (dict)
-def printCoef(clf, volcDict, classMap, sort=False, reverse=True, wordRank=None, outfile=sys.stdout):
+def printCoef(clf, volcDict, classMap, sort=False, reverse=True, outfile=sys.stdout):
     supportCoef = [MultinomialNB, LogisticRegression, LinearSVC]
     if type(clf) in supportCoef:
         if clf.coef_.shape[0] == 1:
             print('Binary classification')
-            __printBinaryCoeff(clf, volcDict, classMap, sort, reverse, wordRank, outfile)
+            __printBinaryCoeff(clf, volcDict, classMap, sort, reverse, outfile)
         else:
-            __printMultiClassCoeff(clf, volcDict, classMap, sort, reverse, wordRank, outfile)
+            __printMultiClassCoeff(clf, volcDict, classMap, sort, reverse, outfile)
     else:
         return 
 
 
-def __printMultiClassCoeff(clf, volcDict, classMap, sort=False, reverse=True, wordRank=None, outfile=sys.stdout):
+def __printMultiClassCoeff(clf, volcDict, classMap, sort=False, reverse=True, outfile=sys.stdout):
     print('Coefficients:', file=outfile)
     coef = clf.coef_
     cNum = coef.shape[0] # class number
@@ -102,7 +55,7 @@ def __printMultiClassCoeff(clf, volcDict, classMap, sort=False, reverse=True, wo
         print('', file=outfile)
 
 
-def __printBinaryCoeff(clf, volcDict, classMap, sort=False, reverse=True, wordRank=None, outfile=sys.stdout):
+def __printBinaryCoeff(clf, volcDict, classMap, sort=False, reverse=True, outfile=sys.stdout):
     print('Coefficients:', file=outfile)
     coef = clf.coef_
     cNum = coef.shape[0] # class number
@@ -124,7 +77,7 @@ def __printBinaryCoeff(clf, volcDict, classMap, sort=False, reverse=True, wordRa
             for ci in [0, 1]:
                 if ri < len(cValues[ci]):
                     (wIndex, value) = cValues[ci][ri]
-                    print(genOutStr(wIndex, volcDict, wordRank, value), end='', file=outfile)
+                    print(genOutStr(wIndex, volcDict, value), end='', file=outfile)
             print('', file=outfile)
 
     else:
@@ -133,25 +86,19 @@ def __printBinaryCoeff(clf, volcDict, classMap, sort=False, reverse=True, wordRa
         print('Class %s' % (classMap[1]), file=outfile)
         for ri in range(0, fNum):
             (wIndex, value) = cValues[0][ri]
-            print(genOutStr(wIndex, volcDict, wordRank, value), end='', file=outfile)
+            print(genOutStr(wIndex, volcDict, value), end='', file=outfile)
             print('', file=outfile)
 
-def genOutStr(wIndex, volcDict, wordRank, value):
+def genOutStr(wIndex, volcDict, value):
     word = getWord(volcDict, wIndex, usingJson=False)
-    if wordRank is not None:
-        rank = wordRank[word] if word in wordRank else None
-        #if rank >= 3483 and rank <= 6986:
-        #    return '\033[1;33m(%d / %s / %s)\033[0m, %f' % (wIndex, word, str(rank), value)
-        outStr = '%s / %s, %f' % (word, str(rank), value)
-    else:
-        outStr = '%s, %f' % (word, value)
+    outStr = '%s, %f' % (word, value)
 
     if len(outStr) < 60:
         outStr += ' ' * (60 - len(outStr))
     return outStr
 
 # X is CSR-Matrix
-def printXY(X, y, yPredict, volcDict, classMap, newsIdList=None, outfile=sys.stdout, showWordIndex=False):
+def printXY(X, y, yPredict, volcDict, classMap, outfile=sys.stdout, showWordIndex=False):
     assert X.shape[1] == getMainVolcSize(volcDict)
     
     (rowNum, colNum) = X.shape
@@ -164,14 +111,9 @@ def printXY(X, y, yPredict, volcDict, classMap, newsIdList=None, outfile=sys.std
     print(confusion_matrix(y, yPredict), file=outfile)
     #sumOfCol = [0.0 for i in range(0, colNum)]
     docF = [0 for i in range(0, colNum)]
-    if newsIdList != None:
-        print('news id', end=',', file=outfile)
     print('label, predict', file=outfile)
     for ri in range(0, rowNum):
-        if newsIdList != None:
-            print(newsIdList[ri], end=',', file=outfile)
-
-        print(classMap[y[ri]], classMap[yPredict[ri]], sep=',', end='', file=outfile)
+        print(classMap[y[ri]], classMap[yPredict[ri]], sep=',', end=',', file=outfile)
         for ci in colIndex[rowPtr[ri]:rowPtr[ri+1]]:
             value = data[nowPos]
             word = getWord(volcDict, ci, usingJson=False)
@@ -299,49 +241,33 @@ def getMainVolcSize(volcDict):
     elif type(volcDict) == list:
         return sum([len(v['main']) for v in volcDict])
 
-def loadWordRankFile(filename):
-    wordRank = dict()
-    wordValue = dict()
-    with open(filename, 'r') as f:
-        for i, line in enumerate(f):
-            entry = line.strip().split(':')
-            w = entry[0].strip()
-            v = float(entry[1].strip())
-            wordRank[w] = i
-            wordValue[w] = v
-    return (wordRank, wordValue)
-            
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print('Usage:', sys.argv[0], 'pickle outFilePrefix [wordRankFile]', file=sys.stderr)
+        print('Usage:', sys.argv[0], 'dataPickle logPickle outFilePrefix', file=sys.stderr)
         exit(-1)
-
-    wordRank = None
-    pickleFile = sys.argv[1]
-    outFilePrefix = sys.argv[2]
-    if len(sys.argv) == 4:
-        wordRankFile = sys.argv[3]
-        (wordRank, wordValue) = loadWordRankFile(wordRankFile)
-    with open(pickleFile, 'r+b') as f:
-        p = pickle.load(f)
     
-    log0 = p['logList'][0]
+    with open(sys.argv[1], 'r+b') as f:
+        dataP = pickle.load(f)
+    with open(sys.argv[2], 'r+b') as f:
+        logP = pickle.load(f)
+    outFilePrefix = sys.argv[3]
+    
+    log0 = dataP[0]
     clf = log0['clf']
-    params = p['params']
-    volcDict = p['volcDict']
+    params = log0['param']
+    volcDict = { 'main': dataP['mainVolc'] }
 
     with open(outFilePrefix + '_coeff.csv', 'w') as f:
         print(clf, file=f)
         print('Parameters:', toStr(params), sep=',', file=f) 
-        printCoef(clf, volcDict, i2Label, sort=True, reverse=True, wordRank=wordRank, outfile=f)
+        printCoef(clf, volcDict, i2Label, sort=True, reverse=True, outfile=f)
 
-    X = p['data']['X']
-    y = p['data']['y']
+    X = dataP['X']
+    y = dataP['y']
     trainIndex = log0['split']['trainIndex']
     testIndex = log0['split']['testIndex']
     valScore = log0['valScore']
     testScore = log0['testScore']
-    newsIdList = p['newsIdList']
 
     with open(outFilePrefix + '_X.csv', 'w') as f:
         print(clf, file=f)
@@ -351,19 +277,17 @@ if __name__ == '__main__':
         print('Training Data:', file=f)
         XTrain = X[trainIndex]
         yTrain = y[trainIndex]
-        newsIds = [newsIdList[i] for i in trainIndex]
         yTrainPredict = log0['predict']['yTrainPredict']
-        printXY(XTrain, yTrain, yTrainPredict, volcDict, i2Label, newsIdList=newsIds, outfile=f)
+        printXY(XTrain, yTrain, yTrainPredict, volcDict, i2Label, outfile=f)
         
         print('Testing Data:', file=f)
         XTest = X[testIndex]
         yTest = y[testIndex]
         yTestPredict = log0['predict']['yTestPredict']
-        newsIds = [newsIdList[i] for i in testIndex]
-        printXY(XTest, yTest, yTestPredict, volcDict, i2Label, newsIdList=newsIds, outfile=f)
+        printXY(XTest, yTest, yTestPredict, volcDict, i2Label, outfile=f)
 
     with open(outFilePrefix + '_log.csv', 'w') as f:
-        print('C, valScore, trainScore, testScore', file=f)
-        printCScore(p['logList'], 'Accuracy', y, outfile=f)
-        for log in p['logList']:
+        print('C\ttrain\tval\ttest', file=f)
+        printCScore(logP, 'Accuracy', y, outfile=f)
+        for log in logP:
             printLog(log, y, i2Label, outfile=f)
