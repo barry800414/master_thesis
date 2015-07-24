@@ -10,6 +10,7 @@ def writeMATFile(p, filename):
     doc2XList = p['doc2XList']
     sentSX = p['sentSX']
     sentPX = p['sentPX']
+    print('sentSX:', sentSX.shape, ' sentPX:', sentPX.shape, file=sys.stderr)
     F_sta = np.zeros((nDocs, ), dtype=np.object)
     F_subj = np.zeros((nDocs, ), dtype=np.object)
     
@@ -17,7 +18,7 @@ def writeMATFile(p, filename):
         index = doc2XList[i]
         F_sta[i] = sentPX[index].astype(np.float64)
         F_subj[i] = sentSX[index].astype(np.float64)
-        
+    
     y = (p['docy'] - 0.5) * 2.0;
     y = y.reshape((-1, 1)).astype(np.float64)
     savemat(filename, { 'F_sta': F_sta, 'F_subj': F_subj, 'y': y })

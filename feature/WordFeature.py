@@ -201,6 +201,8 @@ if __name__ == '__main__':
     # load volcabulary file
     topicVolcDict = loadVolcFileFromConfig(config['volc'], topicSet)
 
+    
+
     # parameters:
     fName = config['featureName']
     paramsIter = ParameterGrid(config['params'])
@@ -209,6 +211,7 @@ if __name__ == '__main__':
 
     # ============= Run for self-train-test ===============
     for t, lnList in sorted(lnListInTopic.items()):
+        newsIdList = [ ln['news_id'] for ln in lnList ]
         for p in paramsIter:
             # there could be unlabeled data
             allX = wm.genX(lnList, feature=p['feature'], volcDict=topicVolcDict[t], allowedPOS=p['allowedPOS'])
@@ -219,7 +222,7 @@ if __name__ == '__main__':
             y = ally[labelIndex]
             unX = allX[unLabelIndex]
             
-            pObj = { 'X':X, 'unX': unX, 'y':y, 'mainVolc': volcDict['main'], 'config': config }
+            pObj = { 'X':X, 'unX': unX, 'y':y, 'mainVolc': volcDict['main'], 'config': config, 'newsIdList': newsIdList }
             with open('t%d_%s_%s.pickle' % (t, fName, p['feature']),'w+b') as f:
                 pickle.dump(pObj, f)
 

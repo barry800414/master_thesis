@@ -5,10 +5,18 @@ from scipy.sparse import csr_matrix
 from sklearn.decomposition import PCA
 from RunExperiments import RunExp, ResultPrinter
 
-def runPCA(pList, n_components=0.95):
+def concatAndRunPCA(pList, n_components=0.95):
     X = None
     for p in pList:
         X = p['X'].todense() if X is None else np.concatenate((X, p['X'].todense()), axis=0)
+    pca = PCA(n_components=n_components)
+    newX = pca.fit_transform(X)
+    print(n_components, newX.shape, file=sys.stderr)
+    return pca, newX 
+
+def runPCA(X, n_components=0.95):
+    if type(X) == csr_matrix:
+        X = X.todense()
     pca = PCA(n_components=n_components)
     newX = pca.fit_transform(X)
     print(n_components, newX.shape, file=sys.stderr)
@@ -22,11 +30,11 @@ def splitX(X, pList):
         nowIndex += p['X'].shape[0]
     return XList
 
-def parseNComp(argv):
+def parseNComp(argv, nDocs):
     if argv == 'mle':
         return 'mle'
     elif argv == 'None':
-        return None
+        return nDocs
     else:
         nComp = float(argv)
         nComp = int(nComp) if nComp > 1.0 else nComp
@@ -46,7 +54,7 @@ if __name__ == '__main__':
             pList.append(pickle.load(f))
     
     # run pca
-    (pca, newX) = runPCA(pList, nComp)
+    (pca, newX) = concatAndRunPCA(pList, nComp)
     XList = splitX(newX, pList)    
     
     for i, p in enumerate(pList):
@@ -55,7 +63,7 @@ if __name__ == '__main__':
             newUnX = pca.transform(p['unX'].todense()) if p['unX'].shape[0] > 0 else p['unX']
         else:
             newUnX = None
-        pObj = { 'X': XList[i], 'unX': newUnX, 'y': p['y'], 'mainVolc': p['mainVolc'] }
+        pObj = { 'X': XList[i], 'unX': newUnX, 'y': p['y'], 'mainVolc': p['mainVolc'], 'newsIdList': p['newsIdList'] }
         with open(sys.argv[i+2] + '_PCA%s.pickle' % str(nComp), 'w+b') as f:
             pickle.dump(pObj, f)
 

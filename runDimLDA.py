@@ -25,7 +25,7 @@ feature = 'baseline2_df3'
 dataFolder = './feature'
 resultFolder = './dimReduction/LDA_result'
 
-for t in [2, 3, 4, 5, 13]:
+for t in [3, 4, 5, 13]:
     resultFile = 'DimReduction20150706_LDA_t%d.csv' % (t)
     # reduce to p% of document number
     for usingUnlabeledData in [0, 1]:

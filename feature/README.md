@@ -5,7 +5,13 @@ python3 BasicFeature.py ../data/taggedLabelNews_5T_Merged_long.json 2 nUniqueWor
 python3 BasicFeature.py ../data/taggedLabelNews_5T_Merged_long.json 2 wordDiv wordDiv
 python3 BasicFeature.py ../data/taggedLabelNews_5T_Merged_long.json 2 groupCnt groupCnt ../res/SD_large_new.volc
 
+## for generating dependency features
+for t in "PP" "PPAll" "POS" "POSAll" "Full" "FullAll"; do python3 DepFeature.py ../data/DepParsedLabelNews_5T_Merged_withNoLabel_long.json ../config/Dep_${t}.json ../res/negPattern.json ../res/NTUSD_core.csv; done
+
+for t in "PP" "PPAll" "POS" "POSAll" "Full" "FullAll"; do for i in 3 4 5 13; do python3 ../dimReduction/dimReduction.py t${i}_Dep_${t}.pickle tfidf 0 -method df -minCnt 2 -outPickle t${i}_Dep_${t}_df2.pickle; done; done
+
 ## for generating baseline (PP)
+
 
 ## for generating baseline2 (PPAll)
 for i in 2 3 4 5 13; do python3 Merge.py t${i}_baseline2.pickle t${i}_BOW_tf.pickle t${i}_Dep_FullAll.pickle t${i}_Dep_POSAll.pickle t${i}_Dep_PPAll.pickle; done
@@ -20,6 +26,7 @@ BOW: 59, 23, 26, 19
 DepPP: 37, 4, 7, 12
 DepFull: 30, 6, 4, 10
 DepPOS: 8, 10, 10, 8
+
 
 BOW: 59, 23, 26, 19
 DepPPAll: 30, 12, 9, 8

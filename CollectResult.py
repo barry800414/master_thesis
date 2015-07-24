@@ -11,7 +11,7 @@ def readCSV(filename, dataType=None):
         for line in f:
             entry = line.strip().split(',')
             if dataType is not None:
-                #assert len(dataType) == len(entry)
+                assert len(dataType) == len(entry)
                 row = list()
                 for i, e in enumerate(entry):
                     if dataType[i] == 'int':

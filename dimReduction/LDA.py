@@ -11,7 +11,7 @@ from misc import *
 from Volc import *
 
 # vocab is a list (index -> word mapping)
-def runLDA(W, volc=None, nTopics=10, nIter=10, nTopicWords=1000, randomState=1, outfile=sys.stdout):
+def runLDA(W, volc=None, nTopics=10, nIter=10, nTopicWords=100, randomState=1, outfile=sys.stdout):
     if nTopicWords == -1:
         nTopicWords = len(vocab) # all words
     model = lda.LDA(n_topics=nTopics, n_iter=nIter, random_state=randomState)
@@ -20,17 +20,19 @@ def runLDA(W, volc=None, nTopics=10, nIter=10, nTopicWords=1000, randomState=1, 
         vocab = geti2W(volc)
         topicWord = model.topic_word_
         newVolc = Volc() # use top N words as volcabulary
-        for i, topicDist in enumerate(topicWord):
-            topicWords = list(np.array(vocab)[np.argsort(topicDist)][:-nTopicWords:-1])
-            newVolc.addWord(toStr(topicWords))
-        return model, volc
+        for t, wordDist in enumerate(topicWord): # for each topic select top N words
+            ipList = [(i, p) for i, p in enumerate(wordDist)] # list of index, prob tuples
+            ipList.sort(key = lambda x:x[1], reverse=True)
+            topicWords = tuple([volc.getWord(i) for i, p in ipList[0:nTopicWords]])
+            newVolc.addWord(topicWords)
+        return model, newVolc
     else:
         return model
 
 def geti2W(volc):
     if volc is None:
         return None
-    i2w = [volc.getWord(i) for i in range(0, len(volc))]
+    i2w = [volc.getWord(i, usingJson=True) for i in range(0, len(volc))]
     return i2w
 
 # print Topic-Word Matrix [topicNum x wordNum] (phi in literature)

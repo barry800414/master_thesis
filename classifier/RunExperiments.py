@@ -10,7 +10,7 @@ import numpy as np
 from numpy.matrixlib.defmatrix import matrix
 from scipy.sparse import csr_matrix, hstack, vstack
 
-from sklearn import svm, cross_validation, grid_search
+from sklearn import svm, grid_search
 from sklearn.cross_validation import StratifiedKFold 
 from sklearn import preprocessing
 from sklearn.grid_search import GridSearchCV, ParameterGrid
@@ -31,7 +31,7 @@ from sklearn.cross_validation import PredefinedSplit
 from misc import *
 
 '''
-The whole experimental framework from X,y to results
+The whole experimental framework from X, y to results
 Date: 2015/03/29
 '''
 
@@ -80,7 +80,7 @@ class RunExp:
         return log
     
     def selfTrainTestNFold(X, y, clfName, scorerName, randSeed=1, test_folds=10,
-            n_folds=10, fSelectConfig=None, prefix='', outfile=sys.stdout):
+            cv_folds=10, fSelectConfig=None, prefix='', outfile=sys.stdout):
         # check data
         if not DataTool.XyIsValid(X, y): #do nothing
             return
@@ -103,7 +103,7 @@ class RunExp:
 
             # training using validation
             (clf, bestParam, trainScore, valScore, yTrainPredict) = ML.train(XTrain, 
-                    yTrain, clfName, scorer, randSeed=randSeed, n_folds=n_folds)
+                    yTrain, clfName, scorer, randSeed=randSeed, n_folds=cv_folds)
             if XTest is None or yTest is None:
                 predict = { 'yTrainPredict': yTrainPredict }
             else:
@@ -121,6 +121,55 @@ class RunExp:
                     randSeed, fId, trainScore, valScore, testScore[scorerName], outfile=outfile)
 
         return logs
+
+    # only a portion of data in test topic is testing data, all other data (including in
+    # other topic) is training data
+    def allTrainOneTestNFold(X, y, topicMap, topic, clfName, scorerName, randSeed=1, test_folds=10,
+            n_folds=10, fSelectConfig=None, prefix='', outfile=sys.stdout):
+        # check data
+        if not DataTool.XyIsValid(X, y): #do nothing
+            return
+        # making scorer
+        scorer = Evaluator.makeScorer(scorerName)
+
+        # split data
+        skf = OneTestStratifiedKFold(y, topicMap, topic, randSeed, test_folds)
+
+        logs = list()
+        for fId, (trainIndex, testIndex) in enumerate(skf):
+            XTrain, XTest = X[trainIndex], X[testIndex]
+            yTrain, yTest = y[trainIndex], y[testIndex]
+            # do feature selection if config is given
+            if fSelectIsBeforeClf(fSelectConfig) == True:
+                print('before selection:', XTrain.shape, file=sys.stderr)
+                (XTrain, selector) = ML.fSelect(XTrain, yTrain, fSelectConfig['method'], 
+                        fSelectConfig['params'])
+                print('after selection:', XTrain.shape, file=sys.stderr)
+                if XTest is not None:
+                    XTest = selector.transform(XTest)
+
+            # training using validation
+            trainTopicMap = [topicMap[i] for i in trainIndex]
+            (clf, bestParam, trainScore, valScore, yTrainPredict) = ML.OneTestTrain(XTrain, 
+                    yTrain, trainTopicMap, topic, clfName, scorer, randSeed, n_folds=cv_folds)
+
+            if XTest is None or yTest is None:
+                predict = { 'yTrainPredict': yTrainPredict }
+            else:
+                # testing 
+                yTestPredict = ML.test(XTest, clf)
+                # evaluation
+                testScore = Evaluator.evaluate(yTestPredict, yTest)
+                predict = { 'yTrainPredict': yTrainPredict, 'yTestPredict': yTestPredict } 
+            
+            # to save information of training process for further analysis
+            log = { 'clfName': clfName, 'clf': clf, 'param': bestParam, 'trainScore': trainScore, 'valScore': valScore,
+                    'predict': predict, 'testScore': testScore, 'split':{ 'trainIndex': trainIndex, 'testIndex': testIndex} }
+            logs.append(log)
+            ResultPrinter.print('SelfTrainTest', clfName, scorerName, X.shape[1], 
+                    randSeed, fId, trainScore, valScore, testScore[scorerName], outfile=outfile)
+
+        return logList
 
 
     def allTrainTest(X, y, topicMap, clfName, scorerName, randSeed=1, testSize=0.2, 
@@ -315,6 +364,38 @@ class DataTool:
         #print('yTest:', yTest)
         
         return (XTrain, XTest, yTrain, yTest, trainIndex, testIndex)
+
+
+    # only the data in test topic will be viewed as testing data
+    # topic: the target testing topic
+    def OneTestStratifiedKFold(X, y, topicMap, topic, randSeed, n_folds):
+        print('TopicMap:', topicMap, file=sys.stderr)
+        topicy = list()
+        topicIndexList = list() # the list of original index of testing data
+        otherIndexList = list()
+        for i, t in enumerate(topicMap):
+            if t == topic:
+                topicy.append(y[i])
+                topicIndexList.append(i)
+            else:
+                otherIndexList.append(i)
+
+        topicy = np.array(topicy)
+        kfold = StratifiedKFold(topicy, n_folds=n_folds, shuffle=True, random_state=randSeed)
+        
+        newKFold = list() # generating new whole k fold 
+        for i, (topicTrainIndex, topicTestIndex) in enumerate(kfold):
+            trainIndex = list(otherIndexList) # all other data are training data
+            for j in topicTrainIndex:
+                trainIndex.append(topicIndexList[j])
+            testIndex = list(topicTestIndex)
+            newKFold.append((trainIndex, testIndex))
+
+        for i, (trainIndex, testIndex) in enumerate(newKFold):
+            print('Fold %d train:' % (i), trainIndex, file=sys.stderr)
+            print('Fold %d test:' % (i), testIndex, file=sys.stderr)
+
+        return newKFold
 
     def topicStratifiedSplitTrainTest(X, y, topicMap, randSeed, testSize):
         # divide data according to the topic
@@ -595,7 +676,7 @@ class ML:
     def train(XTrain, yTrain, clfName, scorer, n_folds, randSeed=1, fSelectConfig=None):
         # make cross validation iterator 
         #print(' n_folds:', n_folds, end='', file=sys.stderr) 
-        kfold = cross_validation.StratifiedKFold(yTrain, n_folds=n_folds, 
+        kfold = StratifiedKFold(yTrain, n_folds=n_folds, 
                     shuffle=True, random_state=randSeed)
 
         #if XTrain.shape[0] > 150:
@@ -627,6 +708,23 @@ class ML:
             trainScore = scorer.score(yTrain, yPredict)
 
         return (clfGS.best_estimator_, clfGS.best_params_, trainScore, bestValScore, yPredict)
+
+    def OneTestTrain(XTrain, yTrain, topicMap, topic, clfName, scorer, randSeed, n_folds):
+        # get classifier and parameters to try
+        (clf, parameters) = ML.genClfAndParams(clfName)
+        
+        (bestValScore, bestParams) = ML.OneTestGridSearchCV(clf, parameters, 
+                topicMap, topic, scorerName, XTrain, yTrain, n_folds, randSeed, n_jobs=-1)
+        
+        # refit the data by the best parameters
+        clf.set_params(**bestParams)
+        #print('-> topic refit ', end='', file=sys.stderr)
+        clf.fit(XTrain, yTrain)
+        
+        # testing on training data
+        yPredict = clf.predict(XTrain)
+        
+        return (clf, bestParams, bestValScore, yPredict)
 
     def topicTrain(XTrain, yTrain, clfName, scorerName, trainMap, n_folds, randSeed=1):
         # get classifier and parameters to try
@@ -675,6 +773,35 @@ class ML:
                 bestParams = out[grid_start]['params']
         
         return (bestScore, bestParams)
+
+    def OneTestGridSearchCV(clf, parameters, topicMap, topic, scorerName, XTrain, yTrain, n_folds, randSeed=1, n_jobs=1):
+        # get topic stratified K-fold and its topicMapping
+        (kfold, foldTopicMap) = DataTool.OneTestStratifiedKFold(yTrain, 
+                trainMap, n_folds, randSeed=randSeed) 
+        
+        paramsGrid = ParameterGrid(parameters)
+        
+        out = Parallel(n_jobs=n_jobs)(delayed(topicGSCV_oneTask)(clone(clf), 
+            params, scorerName, k, train, test, XTrain, yTrain, foldTopicMap[k]) 
+                for params in paramsGrid 
+                for k, (train, test) in enumerate(kfold))
+
+        bestParams = None
+        bestScore = None
+        n_fits = len(out)
+        # collecting results
+        for grid_start in range(0, n_fits, n_folds):
+            avgScore = 0.0
+            for r in out[grid_start:grid_start + n_folds]:
+                avgScore += r['avgR'][scorerName]
+            avgScore /= n_folds
+            if bestScore is None or avgScore > bestScore:
+                bestScore = avgScore
+                bestParams = out[grid_start]['params']
+        
+        return (bestScore, bestParams)
+
+
 
     def test(XTest, bestClf):
         yPredict = bestClf.predict(XTest)
@@ -760,9 +887,9 @@ class ML:
         cvType = config['cvType']
         params = config['params']
         if cvType in ['kFold', 'KFold']:
-            cv = cross_validation.StratifiedKFold(y, **params)
+            cv = StratifiedKFold(y, **params)
         elif cvType in ['LOO', 'LeaveOneTest']:
-            cv = cross_validation.LeaveOneTest(len(y), **params) 
+            cv = LeaveOneTest(len(y), **params) 
         else:
             print('CV Type cannot be found', file=sys.stderr)
         return cv
@@ -930,6 +1057,9 @@ class ResultPrinter:
         print('framework, classifier, scorer, dimension, randSeed, foldNum, train, val, test', file=outfile)
 
     def getDataType():
+        return ('str', 'str', 'str', 'str', 'int', 'int', 'float', 'float', 'float')
+
+    def getDataType2():
         return ('str', 'str', 'str', 'str', 'int', 'int', 'float', 'float', 'float', 
                 'float', 'float', 'float', 
                 'float', 'float', 'float', 

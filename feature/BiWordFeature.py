@@ -105,13 +105,13 @@ if __name__ == '__main__':
     deniedPOS = set(['PU'])
     minCnt = 2
 
-    # get the shared volcabulary first
-    volc = getVolc(lnList, wSize, allowedPOS, deniedPOS, minCnt)
-    
     for t, lnList in lnListInTopic.items():
+        (labelIndex, unLabelIndex) = getLabelIndex(lnList)
+        labelLnList = [lnList[i] for i in labelIndex]
+        volc = getVolc(labelLnList, wSize, allowedPOS, deniedPOS, minCnt)
+
         allX = genX(lnList, wSize, allowedPOS, deniedPOS, volc)
         ally = np.array(getLabels(lnList))
-        (labelIndex, unLabelIndex) = getLabelIndex(lnList)
         X = allX[labelIndex]
         y = ally[labelIndex]
         unX = allX[unLabelIndex]
