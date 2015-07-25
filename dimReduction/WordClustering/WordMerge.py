@@ -59,14 +59,13 @@ def readWordVector(filename, allowedWord=None):
 # volcList: list of volc for that X
 # mapList: list of new-to-old(original) mapping
 def divideXAndVolc(X, volc, wordGroups):
-    XList = list()
-    volcList = list()
-    for wg in wordGroups:
+    XDict = dict()
+    volcDict = dict()
+    for name, wg in wordGroups.items():
         newX, newVolc, mapping = filterXAndVolc(X, volc, wg)
-        volcList.append(newVolc)
-        XList.append(newX)
-        #mapList.append(mapping)
-    return XList, volcList
+        volcDict[name] = newVolc
+        XDict[name] = newX
+    return XDict, volcDict
 
 # filter X and volc by wordset
 def filterXAndVolc(X, volc, wordSet):
@@ -87,11 +86,11 @@ def convertIndex(clusters, mapping):
     return clusters
 
 # notice: words not in word group will not be in any group
-def mergeWordEachGroup(X, volc, threshold, wordGroups):
-    XList, volcList = divideXAndVolc(X, volc, wordGroups)
+def mergeWordEachGroup(X, volc, groupThreshold, wordGroups):
+    XDict, volcDict = divideXAndVolc(X, volc, wordGroups)
     clusters = list()
-    for i in range(0, len(XList)):
-        cls = mergeWord(XList[i], volcList[i], threshold)
+    for name in wordGroups.keys():
+        cls = mergeWord(XDict[name], volcDict[name], groupThreshold[name])
         clusters.extend(cls)
     return clusters
 
@@ -225,66 +224,65 @@ def convert2NodeList(partition):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 5:
-        print('Usage:', sys.argv[0], 'WordVector(.vector) volcFile threshold outWordClusterPrefix [-wt WordTagFile] [-v sentimentLexicon]', file=sys.stderr)
+    if len(sys.argv) < 7:
+        print('Usage:', sys.argv[0], 'WordVector(.vector) volcFile threshold SentiLexicon wordTagFile outWordClusterPrefix -tag threshold -tag threshold ...', file=sys.stderr)
         exit(-1)
 
     wordVectorFile = sys.argv[1]
     volcFile = sys.argv[2]
     threshold = float(sys.argv[3])
-    outFilePrefix = sys.argv[4]
+    sentiFile = sys.argv[4]
+    wordTagFile = sys.argv[5]
+    outFilePrefix = sys.argv[6]
 
     # initialization 
-    print('Loading volcabulary ... ', end='', file=sys.stderr)
     volc = Volc()
     volc.load(volcFile)
     print('# allowed words:', len(volc), file=sys.stderr)
-
-    print('Loading word vector matrix ... ', end='', file=sys.stderr)
+    # load word vectors
     volc, vectors = readWordVector(wordVectorFile, set(volc.volc.keys()))
     X = np.array(vectors)
     print(X.shape, '# actual words:', len(volc), file=sys.stderr)
+    # one word should have only one POS tag (most frequent)
+    with open(wordTagFile, 'r') as f:
+        (wordTag, tagWord) = WordTag.loadWordTag(f)
+    # sentiment lexicon file: for grouping words with same sentiment
+    sentiDict = readSentiDict(sentiFile)
 
-    # loading other inputs
-    tagWord = None
-    sentiDict = None   
-    for i in range(5, len(sys.argv)):
-        if sys.argv[i] == '-wt' and  len(sys.argv) > i:
-            # one word should have only one POS tag (most frequent)
-            print('Loading word-tag file ...', file=sys.stderr)
-            with open(sys.argv[i+1], 'r') as f:
-                (wordTag, tagWord) = WordTag.loadWordTag(f)
-        elif sys.argv[i] == '-v' and len(sys.argv) > i:
-            # sentiment lexicon file: for grouping words with same sentiment
-            print('Loading sentiment lexicon ...', file=sys.stderr)
-            sentiDict = readSentiDict(sys.argv[i+1])
+    # load configuration
+    tagThreshold = dict()
+    for i in range(7, len(sys.argv)):
+        if sys.argv[i][0] == '-' and len(sys.argv) > i:
+            tagThreshold[sys.argv[i][1:]] = float(sys.argv[i+1])
+    print(tagThreshold)
 
     clusters = list()
-    toRemoveWords = set()
+    removedWords = set()
     # pos words is a set, neg words is a set, those words are removed
-    if sentiDict is not None:
-        posWordSet = set([w for w, s in sentiDict.items() if s > 0])
-        negWordSet = set([w for w, s in sentiDict.items() if s < 0])
-        clusters.append(allWord2Cluster(posWordSet, volc)) # pos cluster
-        clusters.append(allWord2Cluster(negWordSet, volc)) # neg cluster
-        toRemoveWords.update(posWordSet | negWordSet)
+    posWordSet = set([w for w, s in sentiDict.items() if s > 0])
+    negWordSet = set([w for w, s in sentiDict.items() if s < 0])
+    clusters.append(allWord2Cluster(posWordSet, volc)) # pos cluster
+    clusters.append(allWord2Cluster(negWordSet, volc)) # neg cluster
+    removedWords.update(posWordSet | negWordSet)
 
-    if tagWord is not None:
-        clusters.extend(eachWord2Cluster(tagWord['NR'] - toRemoveWords, volc)) # each word in NR is a cluster
-        toRemoveWords.update(tagWord['NR'])
-        allowedPOS = set(['NN', 'VV', 'VA', 'AD', 'JJ'])
-        wordGroups = [wordSet - toRemoveWords for tag, wordSet in tagWord.items() if tag in allowedPOS]
+    wordGroups = dict()
+    for tag, threshold in tagThreshold.items():
+        if tag not in tagWord: 
+            print('There is no %s tag in corpus' % (tag), file=sys.stderr)
+        wordSet = tagWord[tag] - removedWords
+        if threshold >= 1.0: # each word is a cluster
+            clusters.extend(eachWord2Cluster(wordSet, volc)) 
+        elif threshold <= -1.0: # all words is a cluster
+            clusters.extend(allWord2Cluster(wordSet, volc))
+        else:
+            wordGroups[tag] = wordSet
+        removedWords.update(wordSet)
 
-    if wordGroups is not None:
-        cls = mergeWordEachGroup(X, volc, threshold, wordGroups)
-        clusters.extend(cls)
-        print('Check clusters:', checkClusters(clusters))
-
-    else:
-        remainWords = set(volc.volc.keys()) - toRemoveWords
-        clusters.extend(mergeWordEachGroup(X, volc, threshold, [remainWords]))
-
+    cls = mergeWordEachGroup(X, volc, tagThreshold, wordGroups)
+    clusters.extend(cls)
+    print('Check clusters:', checkClusters(clusters))
     print('# clusters: ', len(clusters), file=sys.stderr)
+    print('# words not in any cluster: ', len(set(volc.volc.keys()) - removedWords))
 
     with open(outFilePrefix + '.txt', 'w') as f:
         printWordCluster(clusters, outfile=f)
