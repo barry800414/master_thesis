@@ -72,7 +72,7 @@ class Transformer():
     def __init__(self, mapping):
         self.mapping = mapping
 
-    def transform(self, X, returnRemovedRows=False, notRemoveRow=False):    
+    def transform(self, X, returnRemovedRows=False, notRemoveRow=True):    
         if notRemoveRow:
             rowMapping = {i:i for i in range(0, X.shape[0])}
         else:

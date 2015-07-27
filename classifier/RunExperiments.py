@@ -116,8 +116,12 @@ class RunExp:
             # to save information of training process for further analysis
             log = { 'clfName': clfName, 'clf': clf, 'param': bestParam, 'trainScore': trainScore, 'valScore': valScore,
                     'predict': predict, 'testScore': testScore, 'split':{ 'trainIndex': trainIndex, 'testIndex': testIndex} }
+            if fSelectConfig is not None:
+                log['XTrain'] = XTrain
+                log['XTest'] = XTest
+
             logs.append(log)
-            ResultPrinter.print('SelfTrainTest', clfName, scorerName, X.shape[1], 
+            ResultPrinter.print('SelfTrainTest', clfName, scorerName, XTrain.shape[1], 
                     randSeed, fId, trainScore, valScore, testScore[scorerName], outfile=outfile)
 
         return logs
@@ -125,15 +129,14 @@ class RunExp:
     # only a portion of data in test topic is testing data, all other data (including in
     # other topic) is training data
     def allTrainOneTestNFold(X, y, topicMap, topic, clfName, scorerName, randSeed=1, test_folds=10,
-            n_folds=10, fSelectConfig=None, prefix='', outfile=sys.stdout):
+            cv_folds=10, fSelectConfig=None, prefix='', outfile=sys.stdout):
         # check data
-        if not DataTool.XyIsValid(X, y): #do nothing
-            return
+        if not DataTool.XyIsValid(X, y): return #do nothing
         # making scorer
         scorer = Evaluator.makeScorer(scorerName)
 
         # split data
-        skf = OneTestStratifiedKFold(y, topicMap, topic, randSeed, test_folds)
+        skf = DataTool.OneTestStratifiedKFold(y, topicMap, topic, randSeed, test_folds)
 
         logs = list()
         for fId, (trainIndex, testIndex) in enumerate(skf):
@@ -368,9 +371,8 @@ class DataTool:
 
     # only the data in test topic will be viewed as testing data
     # topic: the target testing topic
-    def OneTestStratifiedKFold(X, y, topicMap, topic, randSeed, n_folds):
-        print('TopicMap:', topicMap, file=sys.stderr)
-        topicy = list()
+    def OneTestStratifiedKFold(y, topicMap, topic, randSeed, n_folds):
+        topicy = list() # y in that topic
         topicIndexList = list() # the list of original index of testing data
         otherIndexList = list()
         for i, t in enumerate(topicMap):
@@ -385,15 +387,19 @@ class DataTool:
         
         newKFold = list() # generating new whole k fold 
         for i, (topicTrainIndex, topicTestIndex) in enumerate(kfold):
-            trainIndex = list(otherIndexList) # all other data are training data
-            for j in topicTrainIndex:
-                trainIndex.append(topicIndexList[j])
-            testIndex = list(topicTestIndex)
+            trainIndex = [topicIndexList[j] for j in topicTrainIndex]
+            trainIndex.extend(otherIndexList) # all other data are training data
+            testIndex = [topicIndexList[j] for j in topicTestIndex]
             newKFold.append((trainIndex, testIndex))
 
+
+        testSet = set()
         for i, (trainIndex, testIndex) in enumerate(newKFold):
-            print('Fold %d train:' % (i), trainIndex, file=sys.stderr)
-            print('Fold %d test:' % (i), testIndex, file=sys.stderr)
+            if len(set(trainIndex) & set(testIndex)) != 0:
+                print('Error!!!!!!!!!!!!!!!!!!!!!!!!!!', file=sys.stderr)
+            if len(testSet & set(testIndex)) != 0:
+                print('Error2 !!!!!!!!!!!!!!!!!!!!!!!!!', file=sys.stderr)
+            testSet.update(set(testIndex))
 
         return newKFold
 
@@ -673,25 +679,22 @@ class DataTool:
 
 # The class for providing function to do machine learning procedure
 class ML:
-    def train(XTrain, yTrain, clfName, scorer, n_folds, randSeed=1, fSelectConfig=None):
+    def train(XTrain, yTrain, clfName, scorer, n_folds, randSeed=1, n_jobs=-1):
         # make cross validation iterator 
         #print(' n_folds:', n_folds, end='', file=sys.stderr) 
         kfold = StratifiedKFold(yTrain, n_folds=n_folds, 
                     shuffle=True, random_state=randSeed)
+        
+        return ML.__train(kfold, XTrain, yTrain, clfName, scorer, n_folds, randSeed, n_jobs)
 
-        #if XTrain.shape[0] > 150:
-        #    kfold = cross_validation.StratifiedKFold(yTrain, n_folds=n_folds, 
-        #            shuffle=True, random_state=randSeed)
-        #else:
-        #    kfold = cross_validation.LeaveOneOut(XTrain.shape[0])
 
+    def __train(kfold, XTrain, yTrain, clfName, scorer, n_folds, randSeed=1, n_jobs=-1):
         # get classifier and parameters to try
         (clf, parameters) = ML.genClfAndParams(clfName)
 
         # get grid search classifier
         #print('->grid search ', end='', file=sys.stderr)
-        clfGS = GridSearchCV(clf, parameters, scoring=scorer, 
-                refit=True, cv=kfold, n_jobs=-1)
+        clfGS = GridSearchCV(clf, parameters, scoring=scorer, refit=True, cv=kfold, n_jobs=n_jobs)
         
         # refit the data by the best parameters
         #print('->refit ', end='', file=sys.stderr)
@@ -709,7 +712,11 @@ class ML:
 
         return (clfGS.best_estimator_, clfGS.best_params_, trainScore, bestValScore, yPredict)
 
-    def OneTestTrain(XTrain, yTrain, topicMap, topic, clfName, scorer, randSeed, n_folds):
+    # new
+    def OneTestTrain(XTrain, yTrain, topicMap, topic, clfName, scorer, randSeed, n_folds, n_jobs=-1):
+        kfold = DataTool.OneTestStratifiedKFold(yTrain, topicMap, topic, randSeed, n_folds) 
+        return ML.__train(kfold, XTrain, yTrain, clfName, scorer, n_folds, randSeed, n_jobs)
+
         # get classifier and parameters to try
         (clf, parameters) = ML.genClfAndParams(clfName)
         
@@ -726,6 +733,7 @@ class ML:
         
         return (clf, bestParams, bestValScore, yPredict)
 
+    # depricated
     def topicTrain(XTrain, yTrain, clfName, scorerName, trainMap, n_folds, randSeed=1):
         # get classifier and parameters to try
         (clf, parameters) = ML.genClfAndParams(clfName)
@@ -774,35 +782,8 @@ class ML:
         
         return (bestScore, bestParams)
 
-    def OneTestGridSearchCV(clf, parameters, topicMap, topic, scorerName, XTrain, yTrain, n_folds, randSeed=1, n_jobs=1):
-        # get topic stratified K-fold and its topicMapping
-        (kfold, foldTopicMap) = DataTool.OneTestStratifiedKFold(yTrain, 
-                trainMap, n_folds, randSeed=randSeed) 
+        # get topic stratified K-fold
         
-        paramsGrid = ParameterGrid(parameters)
-        
-        out = Parallel(n_jobs=n_jobs)(delayed(topicGSCV_oneTask)(clone(clf), 
-            params, scorerName, k, train, test, XTrain, yTrain, foldTopicMap[k]) 
-                for params in paramsGrid 
-                for k, (train, test) in enumerate(kfold))
-
-        bestParams = None
-        bestScore = None
-        n_fits = len(out)
-        # collecting results
-        for grid_start in range(0, n_fits, n_folds):
-            avgScore = 0.0
-            for r in out[grid_start:grid_start + n_folds]:
-                avgScore += r['avgR'][scorerName]
-            avgScore /= n_folds
-            if bestScore is None or avgScore > bestScore:
-                bestScore = avgScore
-                bestParams = out[grid_start]['params']
-        
-        return (bestScore, bestParams)
-
-
-
     def test(XTest, bestClf):
         yPredict = bestClf.predict(XTest)
         return yPredict
@@ -865,6 +846,8 @@ class ML:
         return (clf, parameters) 
 
     def genClf(config):
+        if config == None:
+            return svm.LinearSVC()
         clfName = config['clfName']
         params = config['params']
         if clfName == 'NaiveBayes':
@@ -883,61 +866,70 @@ class ML:
         return clf
 
     # only applicable for SelfTrainTest ?
-    def genCV(config, y):
-        cvType = config['cvType']
-        params = config['params']
-        if cvType in ['kFold', 'KFold']:
-            cv = StratifiedKFold(y, **params)
-        elif cvType in ['LOO', 'LeaveOneTest']:
-            cv = LeaveOneTest(len(y), **params) 
-        else:
-            print('CV Type cannot be found', file=sys.stderr)
-        return cv
+    
+    #def genCV(config, y):
+    #    cvType = config['cvType']
+    #    params = config['params']
+    #    if cvType in ['kFold', 'KFold']:
+    #        cv = StratifiedKFold(y, **params)
+    #    elif cvType in ['LOO', 'LeaveOneTest']:
+    #        cv = LeaveOneTest(len(y), **params) 
+    #    else:
+    #        print('CV Type cannot be found', file=sys.stderr)
+    #    return cv
+
+    def genCV(n_folds, y):
+        return StratifiedKFold(y, n_folds=n_folds)
 
     # feature selection 
     # FIXME: for the method using classifier, the target score is Accuracy (rather than MacroF1)
     def fSelect(XTrain, yTrain, method, params):
         if method in ["chi", "chi-square"]:
             assert 'top' in params
-            top = float(params['top'])
-            if top < 1.0:
+            top = params['top']
+            if top > 1.0:
                 print('Selecting features with top %d chi-square value ...' % top, file=sys.stderr) 
                 selector = SelectKBest(chi2, k=top).fit(XTrain, yTrain)
                 newX = selector.transform(XTrain)
             else:
-                top = int(top)
+                top = int(top * 100)
                 print('Selecting %d%% features with top chi-square value ...' % top, file=sys.stderr)
                 selector = SelectPercentile(chi2, percentile=top).fit(XTrain, yTrain)
                 newX = selector.transform(XTrain)
 
         elif method in ["rfe", "RFE", 'RecursiveFeatureElimination']:
-            assert top in params and 'step' in params
+            assert 'n_features_to_select' in params and 'step' in params
             print('Selecting features using RecursiveFeatureElimination ...', file=sys.stderr)
+            clf = ML.genClf(params['clfConfig']) if 'clfConfig' in params else ML.genClf(None)
             selector = RFE(clf, params['n_features_to_select'], step=params['step']).fit(XTrain, yTrain)
             newX = selector.transform(XTrain)
+
         elif method in ["rfecv", "RFECV"]:  # only applicable to SelfTrainTest
-            if 'clfConfig' in params and 'cvConfig' in params and 'step' in params:
-                print('Selecting features using RecursiveFeatureElimination and CrossValidation ...', file=sys.stderr)
-                clf = ML.genClf(params['clfConfig'])
-                cv = ML.genCV(params['cvConfig'], yTrain) 
+            if 'n_folds' in params and 'step' in params:
+                print('Selecting features using RecursiveFeatureElimination and CrossValidation ... n_folds:', params['n_folds'], file=sys.stderr)
+                clf = ML.genClf(params['clfConfig']) if 'clfConfig' in params else ML.genClf(None)
+                cv = ML.genCV(params['n_folds'], yTrain) 
                 scorer = Evaluator.makeScorer(params['scorerName'])
-                selector = RFECV(clf, step=params['step'], cv=cv, scoring=scorer, verbose=1).fit(XTrain, yTrain)
+                selector = RFECV(clf, step=params['step'], cv=cv, scoring=scorer).fit(XTrain, yTrain)
                 newX = selector.transform(XTrain)
+
         elif method in ['LinearSVM', 'LinearSVC']:
-            if 'C' in params:
-                print('Selecting features using Linear SVM (L1 regularizaton) ...', file=sys.stderr)
-                selector = svm.LinearSVC(C=params['C'], penalty="l1", dual=False).fit(XTrain, yTrain)
-                newX = selector.transform(XTrain)
+            C = params['C'] if 'C' in params else 1.0
+            print('Selecting features using Linear SVM (L1 regularizaton) ... C:', C, file=sys.stderr)
+            selector = svm.LinearSVC(C=C, penalty="l1", dual=False).fit(XTrain, yTrain)
+            newX = selector.transform(XTrain)
+
         elif method in ['rf', 'RF', 'RandomForest']:
             print('Selecting features using RandomForest ...', file=sys.stderr)
             selector = RandomForestClassifier().fit(XTrain, yTrain)
             newX = selector.transform(XTrain)
+
         # the meaning of volcabulary will be missing
         elif method in ['LDA', 'LinearDiscriminantAnalysis']:
             print('dimension reduction using LinearDiscriminantAnalysis', file=sys.stderr)
             if 'n_components' in params and 'solver' in params and 'shrinkage' in params:
-                selector = LDA(**params).fit(XTrain.toarray(), yTrain)
-                newX = selector.transform(XTrain.toarray())
+                selector = LDA(**params).fit(XTrain.todense(), yTrain)
+                newX = selector.transform(XTrain.todense())
         return (newX, selector)
 
 def fSelectIsBeforeClf(fSelectConfig):

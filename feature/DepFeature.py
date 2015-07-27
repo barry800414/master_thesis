@@ -16,6 +16,18 @@ from Opinion import *
 from misc import *
 
 class OpinionModel:
+    # preCalc document length
+    def preCalc(lnList):
+        docLenList = list()
+        for ln in lnList:
+            docLen = 0
+            contentDep = ln['news']['content_dep']
+            for depObj in contentDep:
+                segText = depObj['seg']
+                docLen += len(segText.split(' '))
+            docLenList.append(docLen)
+        return docLenList
+
     def __init__(self, depParsedLabelNews, topicPhraseList=None):
         self.setModelFlag = False
         self.pln = depParsedLabelNews
@@ -66,7 +78,7 @@ class OpinionModel:
     # negSepList: the list of boolean flag to indicate whether negation pattern is represented separated
     def genX(self, pTreeList, negPList, sentiDict, volcDict, keyTypeList, 
             opnNameList, negSepList, ignoreNeutral, pTreeSepList, countTreeMatched, 
-            minCnt=None, wordGraph=None, wgParams=None):
+            minCnt=None, scaleList=None):
         self.pTL = pTreeList
         self.nPL = negPList
         self.kTL = keyTypeList
@@ -80,13 +92,14 @@ class OpinionModel:
         self.setVolcDict(volcDict)
         
         print('Extracting Opinions(tree pattern matching) ...', end='',file=sys.stderr)
-        wordIndexSet = set()
         opnCntList = list() # the list to save all opinions in each document
         docOpnCnt = defaultdict(int) # opnKey -> document frequency
         opnKeySet = set()
         for i, newsDTList in enumerate(self.corpusDTList):
-            opnDict = self.extractOpn(newsDTList, wordIndexSet)
-            opnCnt = self.countOpn(opnDict)
+            opnDict = self.extractOpn(newsDTList)
+            scale = scaleList[i] if scaleList is not None else 1
+            opnCnt = self.countOpn(opnDict, scale)
+            if scaleList is not None: opnCnt = getRoundDict(opnCnt)
             for key in opnCnt.keys():
                 docOpnCnt[self.volcDict['main'][key]] += 1
             opnKeySet.update(set(opnCnt.keys()))
@@ -96,24 +109,6 @@ class OpinionModel:
                 print('%cExtracting Opinions(tree pattern matching) ... Progress(%d/%d)' % (13, i+1, 
                     len(self.corpusDTList)), end='', file=sys.stderr) 
         print('', file=sys.stderr)
-
-        # reduce volcabulary size
-        #self.volcDict['main'].shrinkVolcByDocF(docOpnCnt, self.minCnt)
-
-        if wordGraph is not None and wgParams is not None:
-            print('Doing word graph propagation ...', file=sys.stderr)
-            print('# word index:', len(wordIndexSet), '# opnKeySet:', len(opnKeySet), file=sys.stderr)
-            adjList = WordProp.getAdjList(wordGraph, allowedSet=wordIndexSet)
-            newOpnCntList = list()
-            for i, opnCnt in enumerate(opnCntList):
-                newOpnCnt = defaultdict(float)
-                for opnKey, cnt in opnCnt.items():
-                    self.addNewPropOpnKey(newOpnCnt, cnt, adjList, opnKey, opnKeySet)
-                newOpnCntList.append(newOpnCnt)
-                if (i+1) % 50 == 0:
-                    print('%cPair propagation (%d/%d) ' % (13, i+1, len(opnCntList)), end='', file=sys.stderr)
-            print('', file=sys.stderr)
-            opnCntList = newOpnCntList
 
         # convert to X, y
         rows = list()
@@ -137,13 +132,12 @@ class OpinionModel:
             DF = countDFByCSRMatrix(X)
             X = shrinkCSRMatrixByDF(X, DF, minCnt)
             DF = self.volcDict['main'].shrinkVolcByDocF(DF, minCnt)
-        
                 
         return X
 
     # opnDict: a dictionary (opinion-type-name -> list of opinions)
     # return: a dictionary (opnKey -> count) 
-    def countOpn(self, opnDict):
+    def countOpn(self, opnDict, scale=1):
         opnCnt = defaultdict(int)
         for opnName, opns in opnDict.items():
             # ignore the opinions which are not selected
@@ -156,19 +150,19 @@ class OpinionModel:
                             keyValue = OpinionModel.getOpnKeyValue(opn, keyType, self.sD, negSep, self.iN, pTreeSep)
                             if keyValue is not None:
                                 (key, value) = keyValue
-                                opnCnt[key] += value
+                                opnCnt[key] += value * scale
                                 self.volcDict['main'].addWord(key)
             # if countTreeMatched is on
             if self.cTM:
-                opnCnt[opnName] = len(opns)
+                opnCnt[opnName] = len(opns) * scale
                 self.volcDict['main'].addWord(opnName)
-                        
+
         return opnCnt
         
 
     # depParsedNews: dependency parsed news 
     # return: a dictionary (opinion-type-name -> list of opinions)
-    def extractOpn(self, newsDTList, wordIndexSet):
+    def extractOpn(self, newsDTList):
         opnDict = dict()
         
         # for each dependency tree
@@ -194,12 +188,6 @@ class OpinionModel:
                     opn = Opinion.genOpnFromDict(results[i], self.volcDict, pTree.name)
                     if opn is None:
                         continue
-                    if opn.tg is not None:
-                        wordIndexSet.add(opn.tg)
-                    if opn.opn is not None and not opn.usingOpnTag:
-                        wordIndexSet.add(opn.opn)
-                    if opn.hd is not None:
-                        wordIndexSet.add(opn.hd)
                     opnList.append(opn)
                 opnDict[pTree.name].extend(opnList)
         return opnDict
@@ -306,14 +294,20 @@ if __name__ == '__main__':
     # model parameters 
     fName = config['featureName']
     paramsIter = ParameterGrid(config['params'])
+    lengthNorm = config['lengthNorm'] if 'lengthNorm' in config else False
 
-    om = { t: initOM(ln, topicPhraseList) for t, ln in lnListInTopic.items() }
+    om = { t: initOM(ln, topicPhraseList) for t, ln in lnListInTopic.items() if t != 2 }
  
     for t, lnList in sorted(lnListInTopic.items(), key=lambda x:x[0]):
-        newsIdList = [ ln['news_id'] for ln in lnList ]
+        if t == 2: continue
+        scaleList = None
+        if lengthNorm:
+            docLenList = OpinionModel.preCalc(lnList)
+            scaleList = convert2ScaleList(docLenList)
         for p in paramsIter:
             allX = om[t].genX(pTreeList, negPList, sentiDict, topicVolcDict[t], p['keyTypeList'], 
-                p['opnNameList'], p['negSepList'], p['ignoreNeutral'], p['pTreeSepList'], p['countTreeMatched'])
+                p['opnNameList'], p['negSepList'], p['ignoreNeutral'], p['pTreeSepList'], 
+                p['countTreeMatched'], scaleList=scaleList)
             volcDict = om[t].getVolcDict()
             ally = np.array(getLabels(lnList))
             (labelIndex, unLabelIndex) = getLabelIndex(lnList)
@@ -321,6 +315,6 @@ if __name__ == '__main__':
             y = ally[labelIndex]
             unX = allX[unLabelIndex]
             
-            pObj = { 'X':X, 'unX': unX, 'y':y, 'mainVolc': volcDict['main'], 'config': config, 'newsIdList': newsIdList }
+            pObj = { 'X':X, 'unX': unX, 'y':y, 'mainVolc': volcDict['main'], 'config': config }
             with open('t%d_%s.pickle' % (t, fName),'w+b') as f:
                 pickle.dump(pObj, f)

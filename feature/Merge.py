@@ -48,9 +48,9 @@ def mergePickle(pickleList, mergeUnX=True):
     y = None
     mainVolc = None
     for p in pickleList:
-        print('X:', p['X'].shape, 'y:', p['y'].shape, 'mainVolc:', len(p['mainVolc']), file=sys.stderr)
+        print('X:', p['X'].shape, 'y:', p['y'].shape, 'mainVolc:', len(p['mainVolc']), end='', file=sys.stderr)
         if mergeUnX and unX is not None:
-            print('unX:', unX.shape, file=sys.stderr)
+            print(' unX:', p['unX'].shape, file=sys.stderr)
 
         if X is None: X = p['X']
         else: X = mergeX(X, p['X'])

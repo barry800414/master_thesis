@@ -10,6 +10,9 @@ from scipy.spatial.distance import pdist
 from misc import *
 from Volc import Volc
 
+#import matplotlib.mlab as mlab
+#import matplotlib.pyplot as plt
+
 # read word vector(text file) from word2vec tool
 def readWordVector(filename, allowedWord=None):
     volc = Volc()
@@ -21,6 +24,7 @@ def readWordVector(filename, allowedWord=None):
         vectors = list()
         i = 0
         while True:
+            i = i + 1
             try:
                 line = f.readline()
                 if not line:
@@ -29,29 +33,32 @@ def readWordVector(filename, allowedWord=None):
                 print('\nAt line %d' % i, e)
                 line = f.readline()
                 volcNum = volcNum - 1
-                i = i + 1
                 continue
             
-            entry = line.strip().split(' ')
-            if len(entry) != dim + 1:
-                print(line)
-                print(len(entry))
-            assert len(entry) == dim + 1
-            w = entry[0].strip()
+            w, vStr = splitLine(line)
             if allowedWord is not None and w not in allowedWord:
                 continue
             volc.addWord(w)
-            vector = list()
-            for j in range(1, len(entry)):
-                vector.append(float(entry[j]))
+
+            entry = vStr.split(' ')
+            if len(entry) != dim:
+                print(line)
+                print(len(entry))
+            assert len(entry) == dim 
+            vector = [float(e) for e in entry]
             vectors.append(vector)
-            i = i + 1
             if (i+1) % 10000 == 0:
                 print('%cProgress: (%d/%d)' % (13, i+1, volcNum), end='', file=sys.stderr)
         print('', file=sys.stderr)
     assert len(volc) == len(vectors)
     vectors = np.array(vectors, dtype=np.float64)
     return (volc, vectors)
+
+def splitLine(line):
+    p = line.find(' ')
+    word = line[0:p]
+    vStr = line[p+1:].strip()
+    return word, vStr
 
 # divide X and volc into several groups
 # wordGroups is a list of words set, should be disjointed
@@ -92,19 +99,24 @@ def mergeWordEachGroup(X, volc, groupThreshold, wordGroups):
     for name in wordGroups.keys():
         cls = mergeWord(XDict[name], volcDict[name], groupThreshold[name])
         clusters.extend(cls)
+        print('%s: %d -> %d' % (name, len(volcDict[name]), len(cls)), file=sys.stderr)
     return clusters
 
 # calculate all-pair cosine similarity -> select edges by fixed threshold
 # -> cluster words by connected component 
 def mergeWord(X, volc, threshold):
-    print('Calculating distance(similarity) of each pair of word vector ...', file=sys.stderr)
     dist = pdist(X, 'cosine')
+    #plotHist(dist, len(volc))
+
     # get list of selected edges by given method
-    print('Selecting edges ...', file=sys.stderr)
     edgeList = getEdgeList(dist, len(volc), threshold) # list of (sim, (x1, x2))
     clusters = mergeEdgeList(edgeList, volc)
-    print('volc size: %d -> %d' % (len(volc), len(clusters)), file=sys.stderr)
     return clusters
+
+def plotHist(array, nNodes):
+    array = (1 - array) 
+    n, bins, patches = plt.hist(array, bins=20, range=(0.25, 0.5))
+    plt.show()
 
 # get list of selected edges by given method
 def getEdgeList(dist, nWords, threshold):
@@ -183,12 +195,15 @@ def printWordClusterAsVolc(clusters, offset=0, outfile=sys.stdout):
                 print(w, key+offset, sep=':', file=outfile)
 
 def checkClusters(clusters):
+    merged = set()
     for i in range(0, len(clusters)):
-        for j in range(i+1, len(clusters)):
-            intersect = set(clusters[i]) & set(clusters[j])
-            if len(intersect) > 0:
-                print(intersect)
-                return False
+        s = set(clusters[i])
+        intersect = merged & s
+        if len(intersect) > 0:
+            print(intersect, file=sys.stderr)
+            print('Cluster Error', file=sys.stderr)
+            return False
+        merged.update(s)
     return True
 
 
@@ -224,16 +239,15 @@ def convert2NodeList(partition):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 7:
+    if len(sys.argv) < 6:
         print('Usage:', sys.argv[0], 'WordVector(.vector) volcFile threshold SentiLexicon wordTagFile outWordClusterPrefix -tag threshold -tag threshold ...', file=sys.stderr)
         exit(-1)
 
     wordVectorFile = sys.argv[1]
     volcFile = sys.argv[2]
-    threshold = float(sys.argv[3])
-    sentiFile = sys.argv[4]
-    wordTagFile = sys.argv[5]
-    outFilePrefix = sys.argv[6]
+    sentiFile = sys.argv[3]
+    wordTagFile = sys.argv[4]
+    outFilePrefix = sys.argv[5]
 
     # initialization 
     volc = Volc()
@@ -251,7 +265,7 @@ if __name__ == '__main__':
 
     # load configuration
     tagThreshold = dict()
-    for i in range(7, len(sys.argv)):
+    for i in range(6, len(sys.argv)):
         if sys.argv[i][0] == '-' and len(sys.argv) > i:
             tagThreshold[sys.argv[i][1:]] = float(sys.argv[i+1])
     print(tagThreshold)
@@ -282,7 +296,8 @@ if __name__ == '__main__':
     clusters.extend(cls)
     print('Check clusters:', checkClusters(clusters))
     print('# clusters: ', len(clusters), file=sys.stderr)
-    print('# words not in any cluster: ', len(set(volc.volc.keys()) - removedWords))
+    lostWords = set(volc.volc.keys()) - removedWords
+    print('# words not in any cluster: ', len(lostWords))
 
     with open(outFilePrefix + '.txt', 'w') as f:
         printWordCluster(clusters, outfile=f)

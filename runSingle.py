@@ -23,14 +23,14 @@ if ans != 'Y':
     exit(0)
 
 
-resultFile = 'SingleRaw20150722.csv'
+resultFile = 'SingleRawNorm20150724.csv'
 resultDir = './classifier/single'
     #for f in ['Dep_stance']:
-for f in ['BOW_tf', '2Word', '3Word', 'Dep_PP', 'Dep_Full', 'Dep_POS', 'Dep_PPAll', 'Dep_FullAll', 'Dep_POSAll', 'Dep_stance']:    
+#for f in ['BOW_tf', '2Word', '3Word', 'Dep_PP', 'Dep_Full', 'Dep_POS', 'Dep_PPAll', 'Dep_FullAll', 'Dep_POSAll', 'Dep_stance']: 
+for f in ['BOW_tf', 'Dep_PP', 'Dep_Full', 'Dep_POS', 'Dep_PPAll', 'Dep_FullAll', 'Dep_POSAll', 'Dep_stance']: 
     for t in [3, 4, 5, 13]:
-        #for f in ['BOW_tf', '2Word', '3Word', 'Dep_PP', 'Dep_PPAll', 'Dep_Full', 'Dep_FullAll', 'Dep_POS', 'Dep_POSAll', 'Dep_stance']:
-        taskName = 't%d_%s_df2' % (t, f)
-        cmd = 'python3 ./classifier/Run.py ./feature/%s/%s.pickle 3 %s/%s.pickle > %s/%s_results.csv' % (f, taskName, resultDir, taskName, resultDir, taskName)
+        taskName = 't%d_norm_%s_df2' % (t, f)
+        cmd = 'python3 ./classifier/Run.py ./feature/lengthNorm/%s/%s.pickle 3 %s/%s.pickle > %s/%s_results.csv' % (f, taskName, resultDir, taskName, resultDir, taskName)
         #print(cmd)
         #sender.putTask(cmd)
     
