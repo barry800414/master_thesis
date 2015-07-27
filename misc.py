@@ -5,7 +5,7 @@ import random
 import math
 
 import numpy as np
-from scipy.sparse import csr_matrix 
+from scipy.sparse import csr_matrix, vstack
 
 label2i = { "neutral" : 2, "oppose": 0, "agree" : 1, "": -1 } 
 i2Label = ["oppose", "agree", "neutral"]
@@ -282,4 +282,58 @@ def checkColZero(X):
         sum = int(b * X.getcol(i))
         if sum == 0:
             print(i)
+
+def getRound(value):
+    if value < 1:
+        return 1
+    else:
+        return int(round(value))
+
+def getRoundDict(d):
+    for key in d.keys():
+        d[key] = getRound(d[key])
+    return d
+
+def convert2ScaleList(docLenList):
+    avg = np.mean(docLenList)
+    scaleList = [(avg / docLen) for docLen in docLenList]
+    return scaleList
+
+# vertically merge X (support dense matrix and sparse matrix)
+def vMergeX(x1, x2):
+    if x1 is None:
+        if x2 is None: return None
+        else: return x2
+    else:
+        if x2 is None: return x1
+
+    newX = None
+    if type(x1) == csr_matrix:
+        if type(x2) == csr_matrix:
+            newX = vstack((x1, x2)).tocsr()
+        elif type(x2) == np.ndarray:
+            n1 = x1.shape[0] * x1.shape[1]
+            n2 = x2.shape[0] * x2.shape[1]
+            if n1 > n2:
+                newX = vstack((x1, csr_matrix(x2))).tocsr()
+            else:
+                newX = np.concatenate((x1.todense(), x2), axis=0)
+        else:
+            print('Type: ', type(x2), 'not support', file=sys.stderr)
+    elif type(x1) == np.ndarray:
+        if type(x2) == np.ndarray:
+            newX = np.concatenate((x1, x2), axis=0)
+        elif type(x2) == csr_matrix:
+            n1 = x1.shape[0] * x1.shape[1]
+            n2 = x2.shape[0] * x2.shape[1]
+            if n1 > n2:
+                newX = np.concatenate((x1, x2.todense()), axis=0)
+            else:
+                newX = vstack((csr_matrix(x1), x2)).tocsr()
+        else:
+            print('Type: ', type(x2), 'not support', file=sys.stderr)
+    else:
+        print('Type: ', type(x1), 'not support', file=sys.stderr)
+    return newX
+
 

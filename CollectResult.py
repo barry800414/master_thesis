@@ -6,26 +6,28 @@ def readCSV(filename, dataType=None):
     with open(filename, 'r') as f:
         line = f.readline() # first line: column name
         colNameMap = {c.strip():i for i, c in enumerate(line.strip().split(','))}
-
-        data = list()
+        #rows = list()
+        cols = [list() for i in range(0, len(dataType))]
         for line in f:
             entry = line.strip().split(',')
             if dataType is not None:
                 assert len(dataType) == len(entry)
-                row = list()
+                #row = list()
                 for i, e in enumerate(entry):
                     if dataType[i] == 'int':
-                        row.append(int(e))
+                        v = int(e)
                     elif dataType[i] == 'float':
-                        row.append(float(e))
+                        v = float(e)
                     elif dataType[i] == 'dict':
-                        row.append(str2Var(e))
+                        v = str2Var(e)
                     else:
-                        row.append(e.strip())
-            else:
-                row = entry
-            data.append(row)
-    return (colNameMap, data)
+                        v = e.strip()
+                    #row.append(v)
+                    cols[i].append(v)
+            #else:
+                #row = entry
+            #rows.append(row)
+    return (colNameMap, cols)
 
 def getColumn(data, i):
     return [d[i] for d in data]
@@ -41,18 +43,21 @@ if __name__ == '__main__':
         index = int(sys.argv[2])
 
     dataType = ResultPrinter.getDataType()
-    (colNameMap, data) = readCSV(resultCSV, dataType)
-    
+    (colNameMap, cols) = readCSV(resultCSV, dataType)
     if index is None:
         trainCol, valCol, testCol = 'train', 'val', 'test'
     else:
         trainCol, valCol, testCol = 'train_%d' % (index), 'val_%d' %(index), 'test_%d' %(index)
-    dims = getColumn(data, colNameMap['dimension'])
-    trainScores = getColumn(data, colNameMap[trainCol])
-    valScores = getColumn(data, colNameMap[valCol])
-    testScores = getColumn(data, colNameMap[testCol])
+    #dims = getColumn(rows, colNameMap['dimension'])
+    dim = cols[colNameMap['dimension']][0]
+    train = np.mean(cols[colNameMap[trainCol]])
+    val = np.mean(cols[colNameMap[valCol]])
+    test = np.mean(cols[colNameMap[testCol]])
+    #trainScores = getColumn(data, colNameMap[trainCol])
+    #valScores = getColumn(data, colNameMap[valCol])
+    #testScores = getColumn(data, colNameMap[testCol])
 
-    train = np.mean(trainScores)
-    val = np.mean(valScores)
-    test = np.mean(testScores)
-    print(resultCSV, dims[0], train, val, test, sep=',')
+    #train = np.mean(trainScores)
+    #val = np.mean(valScores)
+    #test = np.mean(testScores)
+    print(resultCSV, dim, train, val, test, sep=',')
