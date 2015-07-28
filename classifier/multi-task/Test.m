@@ -3,6 +3,12 @@ function [ predict, acc ] = Test( X, y, w, c, method )
 % here X, y, W, c are only for one task
 %   Detailed explanation goes here
 
+if length(X) == 0
+    predict = [];
+    acc = 0.0;
+    return;
+end
+
 if strcmp(method, 'Least_Lasso') == 1
     predict = sign(X * w);
 elseif strcmp(method, 'Logistic_Lasso') == 1

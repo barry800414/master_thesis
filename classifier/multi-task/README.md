@@ -7,3 +7,5 @@ The data of PCANone is without unlabeled news (volc size is 1xxxx, BOW_tf featur
 The result on 2015/07/11 has been moved to result20150711
 
 
+## Usage: OneTestSingleFold (some of data in test topic is testing data, all the other data is training data)
+    matlab -r "OneTestSingleFold( './data/LDA_nT10_uX0.mat', 'Logistic_Lasso', 1, 1, 1, 'test' )"
