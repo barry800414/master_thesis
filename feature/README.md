@@ -39,6 +39,11 @@ for i in 3 4 5 13; do python3 Merge.py t${i}_v1_shareVolc.pickle 0 ./BOW_tf_shar
 for i in 3 4 5 13; do python3 Merge.py t${i}_v2_shareVolc.pickle 0 ./BOW_tf_shareVolc/t${i}_BOW_tf_shareVolc.pickle ./Dep_PPAll_shareVolc/t${i}_Dep_PPAll_shareVolc.pickle ./Dep_FullAll_shareVolc/t${i}_Dep_FullAll_shareVolc.pickle ./Dep_POSAll_shareVolc/t${i}_Dep_POSAll_shareVolc.pickle; done
 
 
-## for merging combination1 (word+2word+3word+dep_pos+dep_pp+dep_full)
+## for merging combination (word+2word+3word+dep_pos+dep_pp+dep_full)
 for i in 3 4 5 13; do python3 Merge.py t${i}_merge1_df2.pickle 1 ./BOW_tf/t${i}_BOW_tf_df2.pickle ./2Word/t${i}_2Word_df2.pickle ./3Word/t${i}_3Word_df2.pickle ./Dep_Full/t${i}_Dep_Full_df2.pickle ./Dep_POS/t${i}_Dep_POS_df2.pickle ./Dep_PP/t${i}_Dep_PP_df2.pickle ; done
- for i in 3 4 5 13; do python3 Merge.py t${i}_merge1_df2.pickle 1 ./BOW_tf/t${i}_BOW_tf_df2.pickle ./2Word/t${i}_2Word_df2.pickle ./3Word/t${i}_3Word_df2.pickle ./Dep_FullAll/t${i}_Dep_FullAll_df2.pickle ./Dep_POSAll/t${i}_Dep_POSAll_df2.pickle ./Dep_PPAll/t${i}_Dep_PPAll_df2.pickle ; done
+for i in 3 4 5 13; do python3 Merge.py t${i}_merge2_df2.pickle 1 ./BOW_tf/t${i}_BOW_tf_df2.pickle ./2Word/t${i}_2Word_df2.pickle ./3Word/t${i}_3Word_df2.pickle ./Dep_FullAll/t${i}_Dep_FullAll_df2.pickle ./Dep_POSAll/t${i}_Dep_POSAll_df2.pickle ./Dep_PPAll/t${i}_Dep_PPAll_df2.pickle ; done
+
+## for merging combination (word+2word+3word+dep_pos+dep_pp+dep_full)
+for i in 3 4 5 13; do python3 Merge.py t${i}_merge1_shareVolc.pickle 1 ./BOW_tf_shareVolc/t${i}_BOW_tf_shareVolc.pickle ./2Word_shareVolc/t${i}_2Word_shareVolc.pickle ./3Word_shareVolc/t${i}_3Word_shareVolc.pickle ./Dep_Full_shareVolc/t${i}_Dep_Full_shareVolc.pickle ./Dep_POS_shareVolc/t${i}_Dep_POS_shareVolc.pickle ./Dep_PP_shareVolc/t${i}_Dep_PP_shareVolc.pickle ; done
+for i in 3 4 5 13; do python3 Merge.py t${i}_merge2_shareVolc.pickle 1 ./BOW_tf_shareVolc/t${i}_BOW_tf_shareVolc.pickle ./2Word_shareVolc/t${i}_2Word_shareVolc.pickle ./3Word_shareVolc/t${i}_3Word_shareVolc.pickle ./Dep_FullAll_shareVolc/t${i}_Dep_FullAll_shareVolc.pickle ./Dep_POSAll_shareVolc/t${i}_Dep_POSAll_shareVolc.pickle ./Dep_PPAll_shareVolc/t${i}_Dep_PPAll_shareVolc.pickle ; done
+

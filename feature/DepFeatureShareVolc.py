@@ -68,7 +68,7 @@ class OpinionModel:
     # negSepList: the list of boolean flag to indicate whether negation pattern is represented separated
     def getVolcFromData(self, pTreeList, negPList, sentiDict, keyTypeList, 
             opnNameList, negSepList, ignoreNeutral, pTreeSepList, countTreeMatched, 
-            minCnt=2):
+            minCnt=2, volc=None):
         self.pTL = pTreeList
         self.nPL = negPList
         self.kTL = keyTypeList
@@ -80,33 +80,34 @@ class OpinionModel:
         self.cTM = countTreeMatched # count the number of matched of that tree pattern
         self.minCnt = minCnt 
         self.setVolcDict(None)
-        
+
         print('Extracting Opinions(tree pattern matching) ...', end='',file=sys.stderr)
         docOpnCnt = defaultdict(int) # opnKey -> document frequency
         for i, newsDTList in enumerate(self.corpusDTList):
             opnDict = self.extractOpn(newsDTList)
             opnCnt = self.countOpn(opnDict)
             for key in opnCnt.keys():
-                docOpnCnt[self.volcDict['main'][key]] += 1
+                docOpnCnt[key] += 1
             
             if (i+1) % 100 == 0:
                 print('%cExtracting Opinions(tree pattern matching) ... Progress(%d/%d)' % (13, i+1, 
                     len(self.corpusDTList)), end='', file=sys.stderr) 
         print('', file=sys.stderr)
         
-        #reduce volcabulary size
-        print('Before:', len(self.volcDict['main']), file=sys.stderr)
-        self.volcDict['main'].shrinkVolcByDocF(docOpnCnt, self.minCnt)
-        print('After:', len(self.volcDict['main']), file=sys.stderr)
-        return self.volcDict['main']
+        # get volcabulary
+        volc = Volc() if volc is None else volc
+        for key, cnt in docOpnCnt.items():
+            if cnt >= minCnt:
+                volc.addWord(key)        
+        
+        return volc
 
     # keyTypeList: The list of key types to be used as opinion key ('HOT', 'HT', 'OT', 'HO', 'T', 'H')
     # opnNameList: The list of selected opinion name 
     # sentiDict: sentiment dictionary
     # negSepList: the list of boolean flag to indicate whether negation pattern is represented separated
     def genX(self, pTreeList, negPList, sentiDict, volcDict, keyTypeList, 
-            opnNameList, negSepList, ignoreNeutral, pTreeSepList, countTreeMatched, 
-            minCnt=None, wordGraph=None, wgParams=None):
+            opnNameList, negSepList, ignoreNeutral, pTreeSepList, countTreeMatched):
         self.pTL = pTreeList
         self.nPL = negPList
         self.kTL = keyTypeList
@@ -116,14 +117,13 @@ class OpinionModel:
         self.iN = ignoreNeutral
         self.pTSL = pTreeSepList
         self.cTM = countTreeMatched # count the number of matched of that tree pattern
-        self.minCnt = minCnt 
         self.setVolcDict(volcDict)
-        
+
         print('Extracting Opinions(tree pattern matching) ...', end='',file=sys.stderr)
         opnCntList = list() # the list to save all opinions in each document
         for i, newsDTList in enumerate(self.corpusDTList):
             opnDict = self.extractOpn(newsDTList)
-            opnCnt = self.countOpn(opnDict)
+            opnCnt = self.countOpn(opnDict, volc)
             opnCntList.append(opnCnt)
             if (i+1) % 100 == 0:
                 print('%cExtracting Opinions(tree pattern matching) ... Progress(%d/%d)' % (13, i+1, 
@@ -136,14 +136,14 @@ class OpinionModel:
         entries = list()
         for rowId, opnCnt in enumerate(opnCntList):
             for opnKey, value in opnCnt.items():
-                if opnKey not in self.volcDict['main']:
+                if opnKey not in volc:
                     continue
-                colId = self.volcDict['main'][opnKey]
+                colId = volc[opnKey]
                 rows.append(rowId)
                 cols.append(colId)
                 entries.append(value)
         numRow = len(opnCntList)
-        numCol = len(self.volcDict['main'])
+        numCol = len(volc)
         X = csr_matrix((entries, (rows, cols)), shape=(numRow, 
             numCol), dtype=np.int32)
         
@@ -151,7 +151,7 @@ class OpinionModel:
 
     # opnDict: a dictionary (opinion-type-name -> list of opinions)
     # return: a dictionary (opnKey -> count) 
-    def countOpn(self, opnDict):
+    def countOpn(self, opnDict, volc=None):
         opnCnt = defaultdict(int)
         for opnName, opns in opnDict.items():
             # ignore the opinions which are not selected
@@ -164,12 +164,15 @@ class OpinionModel:
                             keyValue = OpinionModel.getOpnKeyValue(opn, keyType, self.sD, negSep, self.iN, pTreeSep)
                             if keyValue is not None:
                                 (key, value) = keyValue
+                                if volc is not None and key not in volc:
+                                    continue
                                 opnCnt[key] += value
-                                self.volcDict['main'].addWord(key)
+
             # if countTreeMatched is on
             if self.cTM:
+                if volc is not None and opnName not in volc:
+                    continue
                 opnCnt[opnName] = len(opns)
-                self.volcDict['main'].addWord(opnName)
                         
         return opnCnt
         
@@ -309,30 +312,34 @@ if __name__ == '__main__':
     fName = config['featureName']
     paramsIter = ParameterGrid(config['params'])
 
+    # init
     
-    # generate volcabulary from all topic's data first
-    omAll = initOM(lnList, topicPhraseList)
-    for p in paramsIter:
-        volc = omAll.getVolcFromData(pTreeList, negPList, sentiDict, p['keyTypeList'], 
-                p['opnNameList'], p['negSepList'], p['ignoreNeutral'], p['pTreeSepList'], p['countTreeMatched'],
-                minCnt=2)
-    volc.lock()
-
-    om = { t: initOM(ln, topicPhraseList) for t, ln in lnListInTopic.items() }
-    for t, lnList in sorted(lnListInTopic.items(), key=lambda x:x[0]):
-        newsIdList = [ ln['news_id'] for ln in lnList ]
+    # generate volcabulary from all topic's labeled data first
+    volc = Volc()
+    for t, lnList in lnListInTopic.items():
+        if t == 2: continue
+        (labelIndex, unLabelIndex) = getLabelIndex(lnList)
+        labelLnList = [lnList[i] for i in labelIndex]
+        om = initOM(labelLnList, topicPhraseList)
         for p in paramsIter:
-            allX = om[t].genX(pTreeList, negPList, sentiDict, {'main': volc}, p['keyTypeList'], 
+            volc = om.getVolcFromData(pTreeList, negPList, sentiDict, p['keyTypeList'], 
+                p['opnNameList'], p['negSepList'], p['ignoreNeutral'], p['pTreeSepList'], 
+                p['countTreeMatched'], minCnt=2, volc=volc)
+    
+    om = { t: initOM(ln, topicPhraseList) for t, ln in lnListInTopic.items() if t != 2 }
+    for t, lnList in sorted(lnListInTopic.items(), key=lambda x:x[0]):
+        if t == 2: continue
+        for p in paramsIter:
+            allX = om[t].genX(pTreeList, negPList, sentiDict, { 'main': volc }, p['keyTypeList'], 
                 p['opnNameList'], p['negSepList'], p['ignoreNeutral'], p['pTreeSepList'], p['countTreeMatched'])
-            volcDict = om[t].getVolcDict()
             ally = np.array(getLabels(lnList))
             (labelIndex, unLabelIndex) = getLabelIndex(lnList)
             X = allX[labelIndex]
             y = ally[labelIndex]
             unX = allX[unLabelIndex]
             
-            pObj = { 'X':X, 'unX': unX, 'y':y, 'mainVolc': volcDict['main'], 'config': config, 'newsIdList':newsIdList }
+            pObj = { 'X':X, 'unX': unX, 'y':y, 'mainVolc': volc, 'config': config }
             with open('t%d_%s_shareVolc.pickle' % (t, fName),'w+b') as f:
                 pickle.dump(pObj, f)
 
-            print(X.shape)
+            print('t:', t, 'XShape:', X.shape, 'volcSize:', len(volc), file=sys.stderr)

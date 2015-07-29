@@ -9,15 +9,17 @@ threeParamMethod = { 'Least_CASO', 'Logistic_CASO' };
 if strcmp(method, 'Least_Lasso') == 1
     pRange.p1Range = 2.^(-9:1:8);
 elseif strcmp(method, 'Logistic_Lasso') == 1
-    pRange.p1Range = 2.^(-15:1:-1);
+    %pRange.p1Range = 2.^(-15:2:-1);
+    pRange.p1Range = 2.^(-13:2:-3);
 elseif strcmp(method, 'Least_L21') == 1
     pRange.p1Range = 2.^(-2:1:8);
 elseif strcmp(method, 'Logistic_L21') == 1
-    pRange.p1Range = 2.^(-13:1:1);
+    %pRange.p1Range = 2.^(-13:2:1);
+    pRange.p1Range = 2.^(-11:2:-1);
 elseif strcmp(method, 'Least_Trace') == 1
     pRange.p1Range = 2.^(-7:1:8);
 elseif strcmp(method, 'Logistic_Trace') == 1
-    pRange.p1Range = 2.^(-5:1:3);
+    %pRange.p1Range = 2.^(-5:1:3);
     pRange.p1Range = [0.01:0.01:0.1 0.2:0.1:1 2:1:10];
 elseif strcmp(method, 'Least_Dirty') == 1
     pRange.p1Range = 2.^(2:2:6);

@@ -217,12 +217,14 @@ if __name__ == '__main__':
     # get volc first
     volc = None
     for t, lnList in sorted(lnListInTopic.items()):
+        if t == 2: continue
+        (labelIndex, unLabelIndex) = getLabelIndex(lnList)
+        labelLnList = [lnList[i] for i in labelIndex]
         for p in paramsIter:
-            volc = WordModel.getVolc(lnList, p['allowedPOS'], 2, volc)
-    
+            volc = WordModel.getVolc(labelLnList, p['allowedPOS'], 2, volc)
 
     for t, lnList in sorted(lnListInTopic.items()):
-        newsIdList = [ ln['news_id'] for ln in lnList ]
+        if t == 2: continue
         for p in paramsIter:
             # there could be unlabeled data
             allX = wm.genX(lnList, feature=p['feature'], volcDict={ 'main': volc }, allowedPOS=p['allowedPOS'])
@@ -233,7 +235,7 @@ if __name__ == '__main__':
             y = ally[labelIndex]
             unX = allX[unLabelIndex]
             
-            pObj = { 'X':X, 'unX': unX, 'y':y, 'mainVolc': volcDict['main'], 'config': config, 'newsIdList': newsIdList }
+            pObj = { 'X':X, 'unX': unX, 'y':y, 'mainVolc': volcDict['main'], 'config': config }
             with open('t%d_%s_%s_shareVolc.pickle' % (t, fName, p['feature']),'w+b') as f:
                 pickle.dump(pObj, f)
 

@@ -53,16 +53,19 @@ end
 
 % using cross-validation to search best parameter 
 % (p(1) to p(N) are for individual, p(N+1) are for all mixed)
-[ p, valAcc ] = OneTestGridSearchCV( XTrain, YTrain, topic, foldNum, seed, method, pRange, opts );
+[ params, valAcc ] = OneTestGridSearchCV( XTrain, YTrain, topic, foldNum, seed, method, pRange, opts );
 
-PrintParam(p);
+PrintParam(params);
 % testing on testing set
 [ model, YTrainPredict, trainAcc, YTestPredict, testAcc ] = TrainTestSingleTask( ...
-    XTrain, YTrain, XTest, YTest, method, p, opts, topic);
+    XTrain, YTrain, XTest, YTest, method, params, opts, topic);
 
 fprintf(fout, 'MultiTask, %s, Accuracy, %d, %d, %d, %f, %f, %f', method, ...
     dim, seed, foldNum, trainAcc, valAcc, testAcc);
 fprintf(fout, '\n');
 fclose(fout);
+
+save(strcat(outFilePrefix, '.mat'), 'dataFile', 'method', 'topic', 'seed', 'foldId', ...
+    'params', 'model', 'trainAcc', 'YTrainPredict', 'valAcc', 'testAcc', 'YTestPredict');
 
 end

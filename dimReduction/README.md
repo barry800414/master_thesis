@@ -23,7 +23,8 @@ python3 dimReductionShareVolc.py LDA 0 LDA_shareVolc -inPickle t3 ../feature/t3_
 
 ## dimension reduction (PCA) on share-volc data (for multi-task learning)
 
-
-
 ## dimension reduction (LDA) on sentence level data (for multi-level method)
 for i in 3 4 5 13; do python3 dimReductionSent2.py ../feature/t${i}_BOW_sent_tf.pickle 1 500 0 ../feature/t${i}_BOW_sent_tf_LDA1.pickle; done
+
+## LDA on shareVolc data
+python3 LDA.py None 500 ../feature/merge1_shareVolc/t3_merge1_shareVolc ../feature/merge1_shareVolc/t4_merge1_shareVolc ../feature/merge1_shareVolc/t5_merge1_shareVolc ../feature/merge1_shareVolc/t13_merge1_shareVolc

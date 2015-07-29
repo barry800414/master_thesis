@@ -45,14 +45,16 @@ if __name__ == '__main__':
         print('Usage:', sys.argv[0], 'nComponents PicklePrefix1 PicklePrefix2 ....', file=sys.stderr)
         exit(-1)
 
-    seedNum = 3
-    
-    nComp = parseNComp(sys.argv[1])
+    nDocs = 0
     pList = list()
     for i in range(2, len(sys.argv)):
         with open(sys.argv[i] + '.pickle', 'r+b') as f:
-            pList.append(pickle.load(f))
-    
+            p = pickle.load(f)
+            nDocs += p['X'].shape[0]
+            pList.append(p)
+    nComp = parseNComp(sys.argv[1], nDocs)
+    print('nComp:', nComp, file=sys.stderr)
+
     # run pca
     (pca, newX) = concatAndRunPCA(pList, nComp)
     XList = splitX(newX, pList)    
@@ -63,7 +65,7 @@ if __name__ == '__main__':
             newUnX = pca.transform(p['unX'].todense()) if p['unX'].shape[0] > 0 else p['unX']
         else:
             newUnX = None
-        pObj = { 'X': XList[i], 'unX': newUnX, 'y': p['y'], 'mainVolc': p['mainVolc'], 'newsIdList': p['newsIdList'] }
+        pObj = { 'X': XList[i], 'unX': newUnX, 'y': p['y'], 'mainVolc': p['mainVolc'] }
         with open(sys.argv[i+2] + '_PCA%s.pickle' % str(nComp), 'w+b') as f:
             pickle.dump(pObj, f)
 

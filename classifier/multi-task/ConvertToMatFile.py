@@ -14,7 +14,7 @@ def writeMATFile(pList, filename):
     savemat(filename, { 'X': xCell, 'Y': yCell })
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 3:
         print('Usage:', sys.argv[0], 'outMatFile inPickleFile1 inPickleFile2 ...', file=sys.stderr)
         exit(-1)
 

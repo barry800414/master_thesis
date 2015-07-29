@@ -14,7 +14,7 @@ Generating BiWord(or even tri-word) feature (with shared volcabulary for running
 '''
 
 # wSize: window size
-def getVolc(lnList, wSize, allowedPOS, deniedPOS, minCnt):
+def getVolc(lnList, wSize, allowedPOS, deniedPOS, minCnt, volc=None):
     df = defaultdict(int) # document frequency
     for ln in lnList:
         nWordSet = set()
@@ -39,8 +39,8 @@ def getVolc(lnList, wSize, allowedPOS, deniedPOS, minCnt):
         for nWord in nWordSet:
             df[nWord] += 1
                    
-    print('Original:', len(df), file=sys.stderr)
-    volc = Volc()
+    print('Original:', len(df), end=' ', file=sys.stderr)
+    volc = Volc() if volc is None else volc
     wvList = list()
     for nWord, cnt in df.items():
         if cnt >= minCnt:
@@ -48,8 +48,8 @@ def getVolc(lnList, wSize, allowedPOS, deniedPOS, minCnt):
             wvList.append((nWord, cnt))
     print('Later:', len(volc), file=sys.stderr)
     wvList.sort(key=lambda x:x[1], reverse=True)
-    for nWord, cnt in wvList:
-        print(nWord, cnt)
+    #for nWord, cnt in wvList:
+    #    print(nWord, cnt)
 
     return volc
 
@@ -90,12 +90,13 @@ def genX(lnList, wSize, allowedPOS, deniedPOS, volc):
 
     
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        print('Usage:', sys.argv[0], 'TaggedLabelNewsJson windowSize', file=sys.stderr)
+    if len(sys.argv) < 3:
+        print('Usage:', sys.argv[0], 'TaggedLabelNewsJson windowSize [-shareVolc]', file=sys.stderr)
         exit(-1)
     
     lnListFile = sys.argv[1]
     wSize = int(sys.argv[2])
+    shareVolc = True if (len(sys.argv) == 4 and sys.argv[3] == '-shareVolc') else False
 
     with open(lnListFile, 'r') as f:
         lnList = json.load(f)
@@ -104,19 +105,30 @@ if __name__ == '__main__':
     allowedPOS = set(['VV', 'VA', 'JJ', 'AD', 'NN', 'NR'])
     deniedPOS = set(['PU'])
     minCnt = 2
+    
+    if shareVolc:
+        volc = Volc()
+        suffix = '%dWord_shareVolc' % wSize
+        for t, lnList in lnListInTopic.items():
+            if t == 2: continue
+            (labelIndex, unLabelIndex) = getLabelIndex(lnList)
+            labelLnList = [lnList[i] for i in labelIndex]
+            volc = getVolc(labelLnList, wSize, allowedPOS, deniedPOS, minCnt, volc)
+    else:
+        suffix = ''
 
     for t, lnList in lnListInTopic.items():
+        if t == 2: continue
         (labelIndex, unLabelIndex) = getLabelIndex(lnList)
         labelLnList = [lnList[i] for i in labelIndex]
-        volc = getVolc(labelLnList, wSize, allowedPOS, deniedPOS, minCnt)
-
+        volc = volc if shareVolc else getVolc(labelLnList, wSize, allowedPOS, deniedPOS, minCnt)
         allX = genX(lnList, wSize, allowedPOS, deniedPOS, volc)
         ally = np.array(getLabels(lnList))
         X = allX[labelIndex]
         y = ally[labelIndex]
         unX = allX[unLabelIndex]
-
+        print('t:', t, 'Xshape:', X.shape, file=sys.stderr)
         pObj = { 'X':X, 'unX': unX, 'y':y, 'mainVolc': volc }
-        with open('t%d_%dWord.pickle' % (t, wSize),'w+b') as f:
+        with open('t%d_%s.pickle' % (t, suffix),'w+b') as f:
             pickle.dump(pObj, f)
 

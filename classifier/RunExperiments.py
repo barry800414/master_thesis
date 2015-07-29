@@ -172,7 +172,7 @@ class RunExp:
             ResultPrinter.print('SelfTrainTest', clfName, scorerName, X.shape[1], 
                     randSeed, fId, trainScore, valScore, testScore[scorerName], outfile=outfile)
 
-        return logList
+        return logs
 
 
     def allTrainTest(X, y, topicMap, clfName, scorerName, randSeed=1, testSize=0.2, 
