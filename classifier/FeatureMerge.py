@@ -1,5 +1,5 @@
 
-import sys, math, pickle
+import sys, math, pickle, copy
 from WordMerge import *
 
 class FeatureMergingModel():
@@ -18,31 +18,52 @@ class FeatureMergingModel():
     def transform(self, X):
         return X * self.proj
 
+    def toDim(self):
+        return self.proj.shape[1]
 
 # given feature vectors, calculating pair-wise cosine similarity
 # and filter out the edges whose sim < threshold
-# adjList: adjaceny list
-def calcSimAndFilterAdjList(vectors, volc, mapping, threshold):
+# adjList: adjacency list
+# adjListList: list of adjacency list
+def calcSimAndFilterAdjList(vectors, mapping, thresholdList, nFeature):
     print('calculating pairwise cosine similarity ...', file=sys.stderr)
     dist = pdist(vectors, 'cosine')
 
     # get list of selected edges by given method
     print('Filtering edges ...', end='', file=sys.stderr)
-    adjList, edgeNum = getAdjList(dist, len(volc), threshold, mapping) # list of (sim, (x1, x2))
+    adjListList, edgeNumList = getAdjListList(dist, vectors.shape[0], thresholdList, mapping, nFeature)
     
-    print('#edges:', edgeNum, ' avgEdgeNum:', edgeNum/len(volc), file=sys.stderr)
+    for i, threshold in enumerate(thresholdList):
+        edgeNum = edgeNumList[i]
+        print('Threshold:', threshold, ' #edges:', edgeNum, ' avgEdgeNum:', edgeNum/len(volc), file=sys.stderr)
 
-    return adjList
+    return adjListList
 
-def getAdjList(dist, nFeature, threshold, mapping):
+def getAdjListList(dist, nFeatureOfVector, thresholdList, mapping, nFeature):
+    tNum = len(thresholdList)
+    adjListList = [[list() for i in range(0, nFeature)] for j in range(0, tNum)]
+    index = 0
+    cntList = [0 for i in range(0, tNum)]
+    for i in range(0, nFeatureOfVector):
+        for j in range(i+1, nFeatureOfVector):
+            sim = 1. - dist[index]
+            for k, threshold in enumerate(thresholdList):
+                if sim > threshold:
+                    adjListList[k][mapping[i]].append(mapping[j])
+                    cntList[k] += 1
+            index += 1
+    return adjListList, cntList
+
+
+def getAdjList(dist, nFeatureOfVector, thresholdList, mapping, nFeature):
     adjList = [list() for i in range(0, nFeature)]
     index = 0
     cnt = 0
-    for i in range(0, nFeature):
-        for j in range(i+1, nFeature):
+    for i in range(0, nFeatureOfVector):
+        for j in range(i+1, nFeatureOfVector):
             sim = 1. - dist[index]
             if sim > threshold:
-                adjList[i].append(mapping[j])
+                adjList[mapping[i]].append(mapping[j])
                 cnt += 1
             index += 1
     return adjList, cnt
@@ -114,40 +135,15 @@ def checkType(v):
     else:
         return None
 
-def saveAdjList(filename, adjList):
-    with open(filename, 'w') as f:
-        for fromId, toNodes in enumerate(adjList):
-            for toId in toNodes:
-                if toId < fromId: continue
-                print(toId, end=' ', file=f)
-            print('', file=f)
-
-def saveAdjList(filename, adjList):
-    with open(filename, 'w') as f:
-        for fromId, toNodes in enumerate(adjList):
-            for toId in toNodes:
-                if toId < fromId: continue
-                print(toId, end=' ', file=f)
-            print('', file=f)
-
-def saveAdjWordFile(filename, adjList, volc):
-    with open(filename, 'w') as f:
-        for fromId, toNodes in enumerate(adjList):
-            print(volc.getWord(fromId), end=':', file=f)
-            for toId in toNodes:
-                print(volc.getWord(toId), end=' ', file=f)
-            print('\n', file=f)
 
 
 # given coefficient(weight) of classifier and feature adjacency list
 # generate projection model for mergin features
-def featureClustering(coef, volc, adjSet, threshold):
+def featureClustering(coef, volc, adjSet):
     posSet, negSet = dividePosNegSet(coef)
-    
-    # posClusters
-    # negClusteres
-
-    model = ML.genFeatureMergingModel(posClusters, negClusters, volc)
+    posClusters = clusterFeatures(posSet, adjSet)    
+    negClusters = clusterFeatures(negSet, adjSet)
+    model = genFeatureMergingModel(posClusters, negClusters, volc)
     return model
     
 # given coefficient(weight) if classifier, divide feature into two group, 
@@ -168,32 +164,72 @@ def dividePosNegSet(coef):
 # adjSet[i]: the edge set of i-th node
 def clusterFeatures(groupSet, adjSet):
     g = nx.Graph()
-    remainSet = set()
+    remainSet = set(groupSet)
     for i in groupSet:
         toSet = adjSet[i] & groupSet
         for j in toSet:
             g.add_edge(i, j)
         if len(toSet) != 0:
             remainSet.difference_update(toSet)
-            remainSet.remove(i)
-
-    partition = community.best_partition(g)
-    clusters = convert2NodeList(partition)
+            remainSet.discard(i)
+    
+    if g.number_of_edges() > 0:
+        partition = community.best_partition(g)
+        clusters = convert2NodeList(partition)
+    else:
+        clusters = list()
 
     for i in remainSet:
         clusters.append([i])
     return clusters
 
+def genFeatureMergingModel(posClusters, negClusters, volc):
+    clusters = copy.deepcopy(posClusters)
+    clusters.extend(negClusters)
+    checkClusters(clusters)
+    model = FeatureMergingModel(clusters, len(volc))
+    return model
+
+
+def saveAdjList(filename, adjList):
+    with open(filename, 'w') as f:
+        for fromId, toNodes in enumerate(adjList):
+            for toId in toNodes:
+                if toId < fromId: continue
+                print(toId, end=' ', file=f)
+            print('', file=f)
+
+def readAdjList(filename):
+    adjSet = list()
+    with open(filename, 'r') as f:
+        for fromId, line in enumerate(f):
+            toIds = line.strip().split()
+            toSet = set()
+            for toId in toIds:
+                toSet.add(int(toId))
+            adjSet.append(toSet)
+    return adjSet
+
+def saveAdjWordFile(filename, adjList, volc):
+    with open(filename, 'w') as f:
+        for fromId, toNodes in enumerate(adjList):
+            print(volc.getWord(fromId), end=':', file=f)
+            for toId in toNodes:
+                print(volc.getWord(toId), end=' ', file=f)
+            print('\n', file=f)
+
+
 if __name__ == '__main__':
-    if len(sys.argv) < 5:
-        print('Usage:', sys.argv[0], 'WordVector(.vector) pickleFile threshold OutAdjFile [OutAdjWordFile]', file=sys.stderr)
+    if len(sys.argv) < 6:
+        print('Usage:', sys.argv[0], 'WordVector(.vector) pickleFile outPrefix threshold1 threshold2 ...', file=sys.stderr)
         exit(-1)
 
     wordVectorFile = sys.argv[1]
     pickleFile = sys.argv[2]
-    threshold = float(sys.argv[3])
-    outAdjFile = sys.argv[4]
-    outAdjWordFile = sys.argv[5] if len(sys.argv) == 6 else None
+    outPrefix = sys.argv[3]
+    thresholdList = list()
+    for i in range(4, len(sys.argv)):
+        thresholdList.append(float(sys.argv[i]))
 
     # read word vectors
     volc, vectors = readWordVector(wordVectorFile)
@@ -205,9 +241,11 @@ if __name__ == '__main__':
     volc = p['mainVolc']
 
     vectors, newVolc, mapping = getFeatureVectors(volc, wordVector)
-    adjList = calcSimAndFilterAdjList(vectors, newVolc, mapping, threshold)
+    adjListList = calcSimAndFilterAdjList(vectors, mapping, thresholdList, len(volc))
     
-    saveAdjList(outAdjFile, adjList)
-    if outAdjWordFile is not None:
-        saveAdjWordFile(outAdjWordFile, adjList, volc)
+    for i, adjList in enumerate(adjListList):
+        filename = outPrefix + '_T%g.adjList' % (thresholdList[i])
+        saveAdjList(filename, adjList)
+    #if outAdjWordFile is not None:
+    #    saveAdjWordFile(outAdjWordFile, adjList, volc)
 

@@ -25,7 +25,7 @@ from sklearn.cross_validation import PredefinedSplit
 
 
 from misc import *
-from WordMerge import *
+import FeatureMerge as FM
 
 '''
 The whole experimental framework from X, y to results
@@ -34,8 +34,8 @@ Date: 2015/03/29
 
 # class for providing frameworks for running experiments
 class RunExp:
-    def selfTrainTestNFoldWithFC(X, y, volc, wordVector, threshold, clfName, scorerName, randSeed=1, test_folds=10,
-            cv_folds=10, fSelectConfig=None, n_jobs=-1, outfile=sys.stdout):
+    def selfTrainTestNFoldWithFC(X, y, volc, adjSet, clfName, scorerName, randSeed=1, test_folds=10,
+            cv_folds=10, fSelectConfig=None, preprocess=None, n_jobs=-1, outfile=sys.stdout):
         # check data
         if not DataTool.XyIsValid(X, y): #do nothing
             return
@@ -58,7 +58,7 @@ class RunExp:
 
             # training using cross-validation and feature clustering 
             (clf, bestParam, trainScore, yTrainPredict, valScore, model) = ML.GridSearchCVandTrainWithFC(XTrain, 
-                    yTrain, volc, wordVector, threshold, clfName, scorerName, cv_folds, randSeed, n_jobs=n_jobs)
+                    yTrain, volc, adjSet, clfName, scorerName, cv_folds, randSeed, n_jobs=n_jobs)
 
             if XTest is None or yTest is None:
                 predict = { 'yTrainPredict': yTrainPredict }
@@ -78,7 +78,7 @@ class RunExp:
                 log['XTest'] = XTest
 
             logs.append(log)
-            ResultPrinter.print('SelfTrainTestWithFC', clfName, scorerName, XTrain.shape[1], 
+            ResultPrinter.print('SelfTrainTestWithFC', clfName, scorerName, model.toDim(), 
                     randSeed, fId, trainScore, valScore, testScore[scorerName], outfile=outfile)
 
         return logs
@@ -283,10 +283,13 @@ class DataTool:
         # minMax scaling: transforming each column(feature) to [a, b]
         # (usually [-1, 1] or [0, 1])
         elif method in ['minmax', 'minMax']:
-            if 'feature_range' in params:
-                print('Using MinMax scaling to', params['feature_range'], file=sys.stderr)
-                preX = DataTool.minMaxScaling(X, params['feature_range'])
-                success = True
+            if 'feature_range' not in params or params['feature_range'] is None:
+                feature_range = (0, 1)
+            else:
+                feature_range = params['feature_range']
+            print('Using MinMax scaling to', feature_range, file=sys.stderr)
+            preX = DataTool.minMaxScaling(X, feature_range)
+            success = True
         # normalization: transforming scaling each row(an instance) to fixed length 
         # (usually L1-norm or L2-norm to length 1)
         elif method in ['norm', 'normalization']:
@@ -348,39 +351,16 @@ class DataTool:
         return X
 
 
-class FeatureMergingModel():
-    def __init__(self, clusters, oriDim):
-        self.clusters = copy.deepcopy(clusters)
-        # generating projection matrix
-        rows, cols, data = list(), list(), list()
-        for i, cluster in enumerate(clusters):
-            for j in cluster:
-                assert j < oriDim
-                rows.append(j)
-                cols.append(i)
-                data.append(1)
-        self.proj = csr_matrix((data, (rows, cols)), shape=(oriDim, len(clusters)), dtype=np.int8)
-        
-    def transform(self, X):
-        return X * self.proj
-
-def trainTestWithFC_OneTask(XTrain, yTrain, XTest, yTest, volc, wordVector, 
-        threshold, clfName, clfParams, scorerName):
-    return ML.trainTestWithFC(XTrain, yTrain, XTest, yTest, volc, wordVector, 
-        threshold, clfName, clfParams, scorerName)
-
-
 # The class for providing function to do machine learning procedure
 class ML:
-    def GridSearchCVandTrainWithFC(X, y, volc, wordVector, threshold, 
-            clfName, scorerName, n_folds, randSeed, n_jobs=-1):
+    def GridSearchCVandTrainWithFC(X, y, volc, adjSet, clfName, scorerName, n_folds, randSeed, n_jobs=-1):
         # train first time with default classifier
         clf = ML.genClf(None)
         #print('Training using default classifier ...', file=sys.stderr)
         clf.fit(X, y)
 
         # feature clustering 
-        model = ML.featureClustering(clf, volc, wordVector, threshold)
+        model = FM.featureClustering(clf.coef_, volc, adjSet)
         newX = model.transform(X)
         print('Feature Clustering:', X.shape, '->', newX.shape, file=sys.stderr)
 
@@ -389,6 +369,63 @@ class ML:
                 newX, y, clfName, scorerName, n_folds, randSeed, n_jobs)
         
         return (clf, bestParam, trainScore, yTrainPredict, valScore, model)
+
+
+    def trainTestWithFC(XTrain, yTrain, XTest, yTest, volc, adjSet, clfName, clfParams, scorerName):
+        (clf, yTrainPredict, trainScore, model) = ML.trainWithFC(XTrain, 
+                yTrain, volc, adjSet, clfName, clfParams, scorerName)
+        yTestPredict = ML.testWithFC(XTest, model, clf)
+        testScore = Evaluator.score(scorerName, yTest, yTestPredict)
+        return (clf, yTrainPredict, trainScore, yTestPredict, testScore, model)
+
+    def trainWithFC(X, y, volc, adjSet, clfName, clfParams, scorerName):
+        # train first time with default classifier
+        clf = ML.genClf(None)
+        #print('Training using default classifier ...', file=sys.stderr)
+        clf.fit(X, y)
+        model = FM.featureClustering(clf.coef_, volc, adjSet)
+        newX = model.transform(X)
+        print('Feature Clustering:', X.shape, '->', newX.shape, file=sys.stderr)
+        clf = ML.genClf({'clfName': clfName, 'params': clfParams})
+        clf.fit(newX, y)
+        predict = clf.predict(newX)
+        score = Evaluator.score(scorerName, y, predict)
+        return (clf, predict, score, model)
+
+    def testWithFC(X, model, clf):
+        # train first time with default classifier
+        newX = model.transform(X)
+        predict = clf.predict(newX)
+        return predict
+
+    def __GridSearchCVandTrain(kfold, X, y, clfName, scorerName, n_jobs=-1):
+        scorer = Evaluator.makeScorer(scorerName)
+        # get classifier and parameters to try
+        (clf, parameters) = ML.genClfAndParams(clfName)
+
+        # get grid search classifier
+        #print('->grid search ', end='', file=sys.stderr)
+        clfGS = GridSearchCV(clf, parameters, scoring=scorer, refit=True, cv=kfold, n_jobs=n_jobs)
+        
+        # refit the data by the best parameters
+        clfGS.fit(X, y)
+
+        # get validation score
+        bestValScore = clfGS.best_score_
+
+        # testing on training data
+        predict = clfGS.predict(X)
+        trainScore = Evaluator.score(scorerName, y, predict)
+
+        return (clfGS.best_estimator_, clfGS.best_params_, trainScore, predict, bestValScore)
+
+
+    def GridSearchCVandTrain(X, y, clfName, scorerName, n_folds, randSeed=1, n_jobs=-1):
+        # make cross validation iterator 
+        #print(' n_folds:', n_folds, end='', file=sys.stderr) 
+        kfold = StratifiedKFold(y, n_folds=n_folds, shuffle=True, random_state=randSeed)
+
+        return ML.__GridSearchCVandTrain(kfold, X, y, clfName, scorerName, n_jobs)
 
     # old 
     def GridSearchCVandTrainWithFC_old(X, y, volc, wordVector, threshold, 
@@ -431,184 +468,6 @@ class ML:
         
         return (bestScore, bestParams)
 
-
-    def trainTestWithFC(XTrain, yTrain, XTest, yTest, volc, wordVector, 
-            threshold, clfName, clfParams, scorerName):
-        (clf, yTrainPredict, trainScore, model) = ML.trainWithFC(XTrain, 
-                yTrain, volc, wordVector, threshold, clfName, clfParams, scorerName)
-    
-        yTestPredict = ML.testWithFC(XTest, model, clf)
-        testScore = Evaluator.score(scorerName, yTest, yTestPredict)
-        return (clf, yTrainPredict, trainScore, yTestPredict, testScore, model)
-
-    def trainWithFC(X, y, volc, wordVector, threshold, clfName, clfParams, scorerName):
-        # train first time with default classifier
-        clf = ML.genClf(None)
-        #print('Training using default classifier ...', file=sys.stderr)
-        clf.fit(X, y)
-        model = ML.featureClustering(clf, volc, wordVector, threshold)
-        newX = model.transform(X)
-        print('Feature Clustering:', X.shape, '->', newX.shape, file=sys.stderr)
-        clf = ML.genClf({'clfName': clfName, 'params': clfParams})
-        clf.fit(newX, y)
-        predict = clf.predict(newX)
-        score = Evaluator.score(scorerName, y, predict)
-        return (clf, predict, score, model)
-
-    def testWithFC(X, model, clf):
-        # train first time with default classifier
-        newX = model.transform(X)
-        predict = clf.predict(newX)
-        return predict
-
-    # assume binary classification
-    def featureClustering(clf, volc, wordVector, threshold):
-        posList, negList = ML.dividePosNegList(clf.coef_)
-        print('Calculating feature vectors ... (pos)', file=sys.stderr)
-        vectors, newVolc, mapping = ML.getFeatureVectors(posList, volc, wordVector)
-        posClusters = ML.clusterFeatures(vectors, newVolc, mapping, threshold, posList)
-        for c in posClusters:
-            if len(c) < 2: continue
-            for i in c:
-                print(volc.getWord(i), end=' ')
-            print('')
-
-        print('Calculating feature vectors ... (neg)', file=sys.stderr)
-        vectors, newVolc, mapping = ML.getFeatureVectors(negList, volc, wordVector)
-        negClusters = ML.clusterFeatures(vectors, newVolc, mapping, threshold, negList)
-        
-        model = ML.genFeatureMergingModel(posClusters, negClusters, volc)
-        return model
-        
-    def dividePosNegList(coef):
-        posList = list()
-        negList = list()
-        for i, w in enumerate(coef[0]):
-            if w >= 0.0:
-                posList.append((i, w))
-            else:
-                negList.append((i, w))
-        return posList, negList
-
-    # given feature vectors, do feature clustering
-    # oriList: original list of (index, weight)
-    def clusterFeatures(vectors, volc, mapping, threshold, oriList):
-        print('Merging features ...', file=sys.stderr)
-        clusters = mergeWord(vectors, volc, threshold)
-        print('Convert back to original index...', file=sys.stderr)
-        clusters = ML.toOriginalIndex(clusters, volc, mapping)
-
-        # some features have no feature vector
-        remainFeatureSet = set([i for i, w in oriList]) - set(mapping)
-        for i in remainFeatureSet:
-            clusters.append([i])
-        return clusters
-
-    def toOriginalIndex(clusters, volc, mapping):
-        newClusters = list()
-        for cluster in clusters:
-            newC = [mapping[volc[i]] for i in cluster]
-            newClusters.append(newC)
-        return newClusters
-
-    # get vector of each feature
-    # now support word feature only
-    def getFeatureVectors(iwList, volc, wordVector):
-        vectors = list() # feature vectors
-        mapping = list() # mapping[i] is the original index if vectors[i]
-        newVolc = Volc() # newVolc
-        for i, w in iwList:
-            vector = ML.calcFeatureVector(i, volc, wordVector)
-            if vector is not None:
-                vectors.append(vector)
-                newVolc.addWord(volc.getWord(i))
-                mapping.append(i)
-
-        return np.array(vectors), newVolc, mapping
-
-    # calculate one feature vector
-    def calcFeatureVector(index, volc, wordVector):
-        v = volc.getWord(index) # volcabulary 
-        fType = ML.checkType(v) # feature type
-        vector = None
-        if fType == 'Word':
-            vector = wordVector[v] if v in wordVector else vector
-        elif fType in ['T', 'H']: #TODO
-            assert len(v) == 3
-            sign = ML.__getSign(v[2])
-            vector = sign * wordVector[v[1]] if v[1] in wordVector else vector           
-            #print(sign)
-        elif fType in ['OT', 'HO']:
-            sign = ML.__getSign(v[2])
-            #print(sign)
-            for i in [1, 3]:
-                if v[i] not in wordVector: continue
-                if vector is None: 
-                    vector = wordVector[v[i]]
-                else:
-                    vector += wordVector[v[i]]
-            if vector is not None: vector = vector * sign
-        elif fType in ['HT']: #TODO
-            pass
-        elif fType in ['HOT']:
-            pass
-        elif fType in ['BiWord', 'TriWord']:
-            for vi in v:
-                if vector is None: vector = wordVector[v] if v in wordVector else vector
-                else: vector += wordVector[v] if v in wordVector else vector
-        return vector
-
-    def __getSign(string):
-        return int(string[string.find('sign')+4:])
-
-    def checkType(v):
-        if type(v) == str:
-            return 'Word'
-        elif type(v) == tuple:
-            if v[0] in ['T', 'OT', 'HO', 'H', 'HT', 'HOT']:
-                return v[0]
-            elif len(v) == 2:
-                return 'BiWord'
-            elif len(v) == 3:
-                return 'TriWord'
-        else:
-            return None
-
-    def genFeatureMergingModel(posClusters, negClusters, volc):
-        clusters = copy.deepcopy(posClusters)
-        clusters.extend(negClusters)
-        checkClusters(clusters)
-        model = FeatureMergingModel(clusters, len(volc))
-        return model
-
-    def __GridSearchCVandTrain(kfold, X, y, clfName, scorerName, n_jobs=-1):
-        scorer = Evaluator.makeScorer(scorerName)
-        # get classifier and parameters to try
-        (clf, parameters) = ML.genClfAndParams(clfName)
-
-        # get grid search classifier
-        #print('->grid search ', end='', file=sys.stderr)
-        clfGS = GridSearchCV(clf, parameters, scoring=scorer, refit=True, cv=kfold, n_jobs=n_jobs)
-        
-        # refit the data by the best parameters
-        clfGS.fit(X, y)
-
-        # get validation score
-        bestValScore = clfGS.best_score_
-
-        # testing on training data
-        predict = clfGS.predict(X)
-        trainScore = Evaluator.score(scorerName, y, predict)
-
-        return (clfGS.best_estimator_, clfGS.best_params_, trainScore, predict, bestValScore)
-
-
-    def GridSearchCVandTrain(X, y, clfName, scorerName, n_folds, randSeed=1, n_jobs=-1):
-        # make cross validation iterator 
-        #print(' n_folds:', n_folds, end='', file=sys.stderr) 
-        kfold = StratifiedKFold(y, n_folds=n_folds, shuffle=True, random_state=randSeed)
-
-        return ML.__GridSearchCVandTrain(kfold, X, y, clfName, scorerName, n_jobs)
 
 
     def __train(kfold, XTrain, yTrain, clfName, scorer, n_folds, randSeed=1, n_jobs=-1):
