@@ -34,7 +34,7 @@ Date: 2015/03/29
 
 # class for providing frameworks for running experiments
 class RunExp:
-    def selfTrainTestNFoldWithFC(X, y, volc, adjSet, clfName, scorerName, randSeed=1, test_folds=10,
+    def selfTrainTestNFoldWithFC(version, X, y, volc, adjSet, clfName, scorerName, randSeed=1, test_folds=10,
             cv_folds=10, fSelectConfig=None, preprocess=None, n_jobs=-1, outfile=sys.stdout):
         # check data
         if not DataTool.XyIsValid(X, y): #do nothing
@@ -57,14 +57,21 @@ class RunExp:
             #        XTest = selector.transform(XTest)
 
             # training using cross-validation and feature clustering 
-            (clf, bestParam, trainScore, yTrainPredict, valScore, model) = ML.GridSearchCVandTrainWithFC(XTrain, 
-                    yTrain, volc, adjSet, clfName, scorerName, cv_folds, randSeed, n_jobs=n_jobs)
+            if version == 1:
+                print('Running version 1...', file=sys.stderr)
+                (clf, bestParam, trainScore, yTrainPredict, valScore, model, newXTest) = ML.GridSearchCVandTrainWithFC(
+                        XTrain, yTrain, XTest, preprocess, volc, adjSet, clfName, scorerName, cv_folds, randSeed, n_jobs=n_jobs)
+            elif version == 2:
+                print('Running version 2...', file=sys.stderr)
+                (clf, bestParam, trainScore, yTrainPredict, valScore, model, newXTest) = ML.GridSearchCVandTrainWithFC_v2(
+                        XTrain, yTrain, XTest, preprocess, volc, adjSet, clfName, scorerName, cv_folds, randSeed, n_jobs=n_jobs)
 
             if XTest is None or yTest is None:
                 predict = { 'yTrainPredict': yTrainPredict }
             else:
                 # testing 
-                yTestPredict = ML.testWithFC(XTest, model, clf)
+                # yTestPredict = ML.testWithFC(newXTest, model, clf)
+                yTestPredict = clf.predict(newXTest)
                 # evaluation
                 testScore = Evaluator.evaluate(yTestPredict, yTest)
                 predict = { 'yTrainPredict': yTrainPredict, 'yTestPredict': yTestPredict } 
@@ -351,53 +358,35 @@ class DataTool:
         return X
 
 
+def trainTestWithFC_OneTask(XTrain, yTrain, XTest, yTest, clfName, clfParams, scorerName):
+    return ML.trainTestWithFC(XTrain, yTrain, XTest, yTest, clfName, clfParams, scorerName)
+
+def trainFirstandFC_OneTask(XTrain, yTrain, XTest, preprocess, volc, adjSet):
+    return ML.trainFirstandFC(XTrain, yTrain, XTest, preprocess, volc, adjSet)
+
 # The class for providing function to do machine learning procedure
 class ML:
-    def GridSearchCVandTrainWithFC(X, y, volc, adjSet, clfName, scorerName, n_folds, randSeed, n_jobs=-1):
-        # train first time with default classifier
-        clf = ML.genClf(None)
-        #print('Training using default classifier ...', file=sys.stderr)
-        clf.fit(X, y)
+    # version1
+    def GridSearchCVandTrainWithFC(XTrain, yTrain, XTest, preprocess, volc, 
+            adjSet, clfName, scorerName, n_folds, randSeed, n_jobs=-1):
 
-        # feature clustering 
-        model = FM.featureClustering(clf.coef_, volc, adjSet)
-        newX = model.transform(X)
-        print('Feature Clustering:', X.shape, '->', newX.shape, file=sys.stderr)
+        # train first to do feature clustering
+        newXTrain, newXTest, model = ML.trainFirstandFC(XTrain, yTrain, XTest, preprocess, volc, adjSet)
 
         # find best parameters
         (clf, bestParam, trainScore, yTrainPredict, valScore) = ML.GridSearchCVandTrain(
-                newX, y, clfName, scorerName, n_folds, randSeed, n_jobs)
+                newXTrain, yTrain, clfName, scorerName, n_folds, randSeed, n_jobs)
         
-        return (clf, bestParam, trainScore, yTrainPredict, valScore, model)
+        return (clf, bestParam, trainScore, yTrainPredict, valScore, model, newXTest)
 
+    # version1
+    def GridSearchCVandTrain(X, y, clfName, scorerName, n_folds, randSeed=1, n_jobs=-1):
+        # make cross validation iterator 
+        #print(' n_folds:', n_folds, end='', file=sys.stderr) 
+        kfold = StratifiedKFold(y, n_folds=n_folds, shuffle=True, random_state=randSeed)
+        return ML.__GridSearchCVandTrain(kfold, X, y, clfName, scorerName, n_jobs)
 
-    def trainTestWithFC(XTrain, yTrain, XTest, yTest, volc, adjSet, clfName, clfParams, scorerName):
-        (clf, yTrainPredict, trainScore, model) = ML.trainWithFC(XTrain, 
-                yTrain, volc, adjSet, clfName, clfParams, scorerName)
-        yTestPredict = ML.testWithFC(XTest, model, clf)
-        testScore = Evaluator.score(scorerName, yTest, yTestPredict)
-        return (clf, yTrainPredict, trainScore, yTestPredict, testScore, model)
-
-    def trainWithFC(X, y, volc, adjSet, clfName, clfParams, scorerName):
-        # train first time with default classifier
-        clf = ML.genClf(None)
-        #print('Training using default classifier ...', file=sys.stderr)
-        clf.fit(X, y)
-        model = FM.featureClustering(clf.coef_, volc, adjSet)
-        newX = model.transform(X)
-        print('Feature Clustering:', X.shape, '->', newX.shape, file=sys.stderr)
-        clf = ML.genClf({'clfName': clfName, 'params': clfParams})
-        clf.fit(newX, y)
-        predict = clf.predict(newX)
-        score = Evaluator.score(scorerName, y, predict)
-        return (clf, predict, score, model)
-
-    def testWithFC(X, model, clf):
-        # train first time with default classifier
-        newX = model.transform(X)
-        predict = clf.predict(newX)
-        return predict
-
+    # version1
     def __GridSearchCVandTrain(kfold, X, y, clfName, scorerName, n_jobs=-1):
         scorer = Evaluator.makeScorer(scorerName)
         # get classifier and parameters to try
@@ -420,39 +409,52 @@ class ML:
         return (clfGS.best_estimator_, clfGS.best_params_, trainScore, predict, bestValScore)
 
 
-    def GridSearchCVandTrain(X, y, clfName, scorerName, n_folds, randSeed=1, n_jobs=-1):
-        # make cross validation iterator 
-        #print(' n_folds:', n_folds, end='', file=sys.stderr) 
-        kfold = StratifiedKFold(y, n_folds=n_folds, shuffle=True, random_state=randSeed)
 
-        return ML.__GridSearchCVandTrain(kfold, X, y, clfName, scorerName, n_jobs)
+    def testWithFC(X, model, clf):
+        # train first time with default classifier
+        newX = model.transform(X)
+        predict = clf.predict(newX)
+        return predict
 
-    # old 
-    def GridSearchCVandTrainWithFC_old(X, y, volc, wordVector, threshold, 
+    # version2
+    # 10-fold -> train first time on val -> feature merge -> grid search -> train first on test -> feature merge
+    def GridSearchCVandTrainWithFC_v2(XTrain, yTrain, XTest, preprocess, volc, adjSet,
             clfName, scorerName, n_folds, randSeed, n_jobs=-1):
         # find best parameters
-        (clf, bestParam, trainScore, yTrainPredict, valScore) = ML.GridSearchCVWithFC(
-                newX, y, clfName, scorerName, n_folds, randSeed, n_jobs)
+        (valScore, bestParams) = ML.GridSearchCVWithFC_v2(XTrain, yTrain, 
+                preprocess, volc, adjSet, clfName, scorerName, n_folds, randSeed, n_jobs)
         
+        # train first to do feature clustering
+        newXTrain, newXTest, model = ML.trainFirstandFC(XTrain, yTrain, XTest, 
+                preprocess, volc, adjSet)
+
         # refit on training data by best parameters
-        (clf, yTrainPredict, trainScore, model) = ML.trainWithFC(X, y, volc, 
-                wordVector, threshold, clfName, bestParams, scorerName)
+        (clf, yTrainPredict, trainScore) = ML.trainWithFC(newXTrain, 
+                yTrain, clfName, bestParams, scorerName)
 
-        return (clf, bestParam, trainScore, yTrainPredict, valScore, model)
+        return (clf, bestParams, trainScore, yTrainPredict, valScore, model, newXTest)
 
-    # old
-    def GridSearchCVWithFC(X, y, volc, wordVector, threshold, clfName, 
-            scorerName, n_folds, randSeed, n_jobs=-1):
+    # version2
+    def GridSearchCVWithFC_v2(X, y, preprocess, volc, adjSet, clfName, 
+            scorerName, n_folds, randSeed, n_jobs):
+   
         kfold = StratifiedKFold(y, n_folds=n_folds, random_state=randSeed)
         (clf, parameters) = ML.genClfAndParams(clfName)
         paramsGrid = ParameterGrid(parameters)
-        
+
+        # train first time to do feature clustering for each fold
+        out = Parallel(n_jobs=n_jobs)(delayed(trainFirstandFC_OneTask)(
+            X[train], y[train], X[test], preprocess, volc, adjSet)
+                for k, (train, test) in enumerate(kfold))
+        XTrainList = [out[i][0] for i in range(0, n_folds)]
+        XTestList = [out[i][1] for i in range(0, n_folds)]
+
+        # grid search to find best parameters
         out = Parallel(n_jobs=n_jobs)(delayed(trainTestWithFC_OneTask)(
-            X[train], y[train], X[test], y[test], volc, wordVector, threshold, 
-            clfName, params, scorerName) 
+            XTrainList[k], y[train], XTestList[k], y[test], clfName, params, scorerName) 
                 for params in paramsGrid 
                 for k, (train, test) in enumerate(kfold))
-
+        
         bestParams = None
         bestScore = None
         n_fits = len(out)
@@ -460,7 +462,7 @@ class ML:
         for grid_start in range(0, n_fits, n_folds):
             avgScore = 0.0
             for r in out[grid_start:grid_start + n_folds]:
-                avgScore += r
+                avgScore += r['score']
             avgScore /= n_folds
             if bestScore is None or avgScore > bestScore:
                 bestScore = avgScore
@@ -468,7 +470,43 @@ class ML:
         
         return (bestScore, bestParams)
 
+    # version1 and version2 will use it
+    def trainFirstandFC(XTrain, yTrain, XTest, preprocess, volc, adjSet):
+        # train first time with default classifier
+        clf = ML.genClf(None)
+        #print('Training using default classifier ...', file=sys.stderr)
+        clf.fit(XTrain, yTrain)
 
+        # feature clustering 
+        model = FM.featureClustering(clf.coef_, volc, adjSet)
+
+        # merge train & test -> remove df < 2 & preprocess -> split X
+        X = vstack((XTrain, XTest)).tocsr()
+        X1 = model.transform(X)
+        DF = countDFByCSRMatrix(X1)
+        X2 = shrinkCSRMatrixByDF(X1, DF, minCnt=2)
+        print(X.shape, '--feature merge-->', X1.shape, '--remove df<2-->', X2.shape, file=sys.stderr)
+        if preprocess is not None:
+            X2 = DataTool.preprocessX(X2, preprocess['method'], preprocess['params'])
+        newXTrain = X2[0:XTrain.shape[0]]
+        newXTest = X2[XTrain.shape[0]:]
+        print('Train:', XTrain.shape, '->', newXTrain.shape, ' Test:', XTest.shape, '->', newXTest.shape, file=sys.stderr)
+        return newXTrain, newXTest, model
+
+    # version2 
+    def trainTestWithFC(XTrain, yTrain, XTest, yTest, clfName, clfParams, scorerName):
+        (clf, yTrainPredict, trainScore) = ML.trainWithFC(XTrain, yTrain, clfName, clfParams, scorerName)
+        yTestPredict = clf.predict(XTest)
+        testScore = Evaluator.score(scorerName, yTest, yTestPredict)
+        return { 'score': testScore, 'params': clfParams }
+
+    # version2
+    def trainWithFC(X, y, clfName, clfParams, scorerName):
+        clf = ML.genClf({'clfName': clfName, 'params': clfParams})
+        clf.fit(X, y)
+        predict = clf.predict(X)
+        score = Evaluator.score(scorerName, y, predict)
+        return (clf, predict, score)
 
     def __train(kfold, XTrain, yTrain, clfName, scorer, n_folds, randSeed=1, n_jobs=-1):
         # get classifier and parameters to try

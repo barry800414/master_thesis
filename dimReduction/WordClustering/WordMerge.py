@@ -54,6 +54,12 @@ def readWordVector(filename, allowedWord=None):
     vectors = np.array(vectors, dtype=np.float64)
     return (volc, vectors)
 
+def toDictType(volc, vectors):
+    d = dict()
+    for i in range(0, len(volc)):
+        d[volc.getWord(i)] = vectors[i]
+    return d
+
 def splitLine(line):
     p = line.find(' ')
     word = line[0:p]
@@ -105,10 +111,12 @@ def mergeWordEachGroup(X, volc, groupThreshold, wordGroups):
 # calculate all-pair cosine similarity -> select edges by fixed threshold
 # -> cluster words by connected component 
 def mergeWord(X, volc, threshold):
+    print('calculating pairwise cosine similarity ...', file=sys.stderr)
     dist = pdist(X, 'cosine')
     #plotHist(dist, len(volc))
 
     # get list of selected edges by given method
+    print('Filtering edges ...', file=sys.stderr)
     edgeList = getEdgeList(dist, len(volc), threshold) # list of (sim, (x1, x2))
     clusters = mergeEdgeList(edgeList, volc)
     return clusters

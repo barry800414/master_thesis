@@ -1,5 +1,4 @@
 #!/bin/bash
-python3 showTaskNum.py ${1}
-grep "Error" *.log
 tail -n 1 *.log
-
+grep "Error" *.log
+python3 showTaskNum.py ${1}

@@ -91,23 +91,36 @@ def genX(lnList, wSize, allowedPOS, deniedPOS, volc):
     
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print('Usage:', sys.argv[0], 'TaggedLabelNewsJson windowSize [-shareVolc]', file=sys.stderr)
+        print('Usage:', sys.argv[0], 'TaggedLabelNewsJson windowSize [-config configFile] [-shareVolc]', file=sys.stderr)
         exit(-1)
     
     lnListFile = sys.argv[1]
     wSize = int(sys.argv[2])
-    shareVolc = True if (len(sys.argv) == 4 and sys.argv[3] == '-shareVolc') else False
+    shareVolc = False
+    config = None
+    for i in range(3, len(sys.argv)):
+        if sys.argv[i] == '-shareVolc':
+            shareVolc = True
+        elif sys.argv[i] == '-config' and len(sys.argv) > i:
+            with open(sys.argv[i+1], 'r') as f:
+                config = json.load(f)
 
     with open(lnListFile, 'r') as f:
         lnList = json.load(f)
 
     lnListInTopic = divideLabelNewsByTopic(lnList)
+    topicSet = set(lnListInTopic.keys())
     allowedPOS = set(['VV', 'VA', 'JJ', 'AD', 'NN', 'NR'])
     deniedPOS = set(['PU'])
-    minCnt = 2
-    
+    minCnt = 0
+    topicVolcDict = None
+
+    if config is not None:
+        # load volcabulary file
+        topicVolcDict = loadVolcFileFromConfig(config['volc'], topicSet)
+
     if shareVolc:
-        volc = Volc()
+        mainVolc = Volc() # as main volcabulary
         suffix = '%dWord_shareVolc' % wSize
         for t, lnList in lnListInTopic.items():
             if t == 2: continue
@@ -115,7 +128,7 @@ if __name__ == '__main__':
             labelLnList = [lnList[i] for i in labelIndex]
             volc = getVolc(labelLnList, wSize, allowedPOS, deniedPOS, minCnt, volc)
     else:
-        suffix = ''
+        suffix = '%dWord' % wSize
 
     for t, lnList in lnListInTopic.items():
         if t == 2: continue

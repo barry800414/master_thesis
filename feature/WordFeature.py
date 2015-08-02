@@ -217,7 +217,7 @@ if __name__ == '__main__':
 
     # parameters:
     fName = config['featureName']
-    paramsIter = ParameterGrid(config['params'])
+    p = config['params']
     lengthNorm = config['lengthNorm'] if 'lengthNorm' in config else False
 
     wm = WordModel()
@@ -229,21 +229,20 @@ if __name__ == '__main__':
             volc, docLenList = WordModel.preCalc(lnList, None, 0)
             #print(docLenList)
             scaleList = convert2ScaleList(docLenList)
-        for p in paramsIter:
-            # there could be unlabeled data
-            allX = wm.genX(lnList, feature=p['feature'], volcDict=topicVolcDict[t], 
-                    allowedPOS=p['allowedPOS'], scaleList=scaleList)
-            volcDict = wm.getVolcDict()
-            ally = np.array(getLabels(lnList))
-            (labelIndex, unLabelIndex) = getLabelIndex(lnList)
-            X = allX[labelIndex]
-            y = ally[labelIndex]
-            unX = allX[unLabelIndex]
-            
-            pObj = { 'X':X, 'unX': unX, 'y':y, 'mainVolc': volcDict['main'], 'config': config }
-            print(X.shape, file=sys.stderr)
-            #with open('t%d_%s_%s.pickle' % (t, fName, p['feature']),'w+b') as f:
-            #    pickle.dump(pObj, f)
+
+        allX = wm.genX(lnList, feature=p['feature'], volcDict=topicVolcDict[t], 
+                allowedPOS=p['allowedPOS'], scaleList=scaleList)
+        volcDict = wm.getVolcDict()
+        ally = np.array(getLabels(lnList))
+        (labelIndex, unLabelIndex) = getLabelIndex(lnList)
+        X = allX[labelIndex]
+        y = ally[labelIndex]
+        unX = allX[unLabelIndex]
+        
+        pObj = { 'X':X, 'unX': unX, 'y':y, 'mainVolc': volcDict['main'], 'config': config }
+        print(X.shape, file=sys.stderr)
+        #with open('t%d_%s_%s.pickle' % (t, fName, p['feature']),'w+b') as f:
+        #    pickle.dump(pObj, f)
 
 
 

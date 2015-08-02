@@ -42,14 +42,15 @@ def parseArgument(argv, start):
 
 if __name__ == '__main__':
     if len(sys.argv) < 3 :
-        print('Usage:', sys.argv[0], 'pickleFile adjListFile seedNum [-outLogPickle LogPickle]', file=sys.stderr)
+        print('Usage:', sys.argv[0], 'pickleFile adjListFile version seedNum [-outLogPickle LogPickle]', file=sys.stderr)
         print('[--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]', file=sys.stderr)
         exit(-1)
     
     pickleFile = sys.argv[1]
     adjListFile = sys.argv[2]
-    seedNum = int(sys.argv[3])
-    outLogPickle, fSelectConfig, preprocess = parseArgument(sys.argv, 4)
+    version = int(sys.argv[3])
+    seedNum = int(sys.argv[4])
+    outLogPickle, fSelectConfig, preprocess = parseArgument(sys.argv, 5)
     print('OutLogPickleFile:', outLogPickle, file=sys.stderr)
     print('fSelectConfig:', fSelectConfig, file=sys.stderr)
     print('preprocess:', preprocess, file=sys.stderr)
@@ -63,9 +64,9 @@ if __name__ == '__main__':
 
     logList = list()
     for seed in range(1, seedNum+1):
-        logs = RunExp.selfTrainTestNFoldWithFC(X, y, volc, adjSet, 'MaxEnt', 'Accuracy', 
+        logs = RunExp.selfTrainTestNFoldWithFC(version, X, y, volc, adjSet, 'MaxEnt', 'Accuracy', 
                 fSelectConfig=fSelectConfig, preprocess=preprocess, randSeed=seed, 
-                test_folds=10, cv_folds=10, n_jobs=-1)
+                test_folds=10, cv_folds=10, n_jobs=2)
         logList.extend(logs)
     
     if outLogPickle is not None:

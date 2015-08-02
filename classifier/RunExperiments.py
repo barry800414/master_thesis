@@ -613,10 +613,13 @@ class DataTool:
         # minMax scaling: transforming each column(feature) to [a, b]
         # (usually [-1, 1] or [0, 1])
         elif method in ['minmax', 'minMax']:
-            if 'feature_range' in params:
-                print('Using MinMax scaling to', params['feature_range'], file=sys.stderr)
-                preX = DataTool.minMaxScaling(X, params['feature_range'])
-                success = True
+            if 'feature_range' not in params or params['feature_range'] is None:
+                feature_range = (0, 1)
+            else:
+                feature_range = params['feature_range']
+            print('Using MinMax scaling to', feature_range, file=sys.stderr)
+            preX = DataTool.minMaxScaling(X, feature_range)
+            success = True
         # normalization: transforming scaling each row(an instance) to fixed length 
         # (usually L1-norm or L2-norm to length 1)
         elif method in ['norm', 'normalization']:
@@ -679,7 +682,7 @@ class DataTool:
 
 # The class for providing function to do machine learning procedure
 class ML:
-    def train(XTrain, yTrain, clfName, scorer, n_folds, randSeed=1, n_jobs=-1):
+    def train(XTrain, yTrain, clfName, scorer, n_folds, randSeed=1, n_jobs=2):
         # make cross validation iterator 
         #print(' n_folds:', n_folds, end='', file=sys.stderr) 
         kfold = StratifiedKFold(yTrain, n_folds=n_folds, 

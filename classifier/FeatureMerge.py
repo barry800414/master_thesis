@@ -21,6 +21,39 @@ class FeatureMergingModel():
     def toDim(self):
         return self.proj.shape[1]
 
+
+# given feature vectors, calculating pair-wise cosine similarity
+# and filter out the edges whose sim < threshold
+# adjList: adjacency list
+# adjListList: list of adjacency list
+def calcSimAndFilterAdjListByGroup(groupVectors, groupMapping, thresholdList, nFeature):
+    finalAdjListList = None
+    for fType, vectors in groupVectors.items():
+        print('feature type:', fType, ' #features:', vectors.shape[0], file=sys.stderr)
+        print('calculating pairwise cosine similarity ...', file=sys.stderr)
+        dist = pdist(vectors, 'cosine')
+
+        # get list of selected edges by given method
+        print('Filtering edges ...', end='', file=sys.stderr)
+        adjListList, edgeNumList = getAdjListList(dist, vectors.shape[0], thresholdList, groupMapping[fType], nFeature)
+        for i, threshold in enumerate(thresholdList):
+            edgeNum = edgeNumList[i]
+            print('Threshold:', threshold, ' #edges:', edgeNum, ' avgEdgeNum:', edgeNum/len(volc), file=sys.stderr)
+        finalAdjListList = mergeAdjListList(finalAdjListList, adjListList)
+    return finalAdjListList
+
+def mergeAdjListList(target, source):
+    if target is None:
+        return copy.deepcopy(source)
+    else:
+        assert len(target) == len(source)
+        for i in range(0, len(target)):
+            for j in range(0, len(target[i])):
+                if len(source[i][j]) != 0:
+                    assert len(target[i][j]) == 0
+                target[i][j].extend(source[i][j])
+        return target
+
 # given feature vectors, calculating pair-wise cosine similarity
 # and filter out the edges whose sim < threshold
 # adjList: adjacency list
@@ -30,13 +63,12 @@ def calcSimAndFilterAdjList(vectors, mapping, thresholdList, nFeature):
     dist = pdist(vectors, 'cosine')
 
     # get list of selected edges by given method
-    print('Filtering edges ...', end='', file=sys.stderr)
+    print('Filtering edges ...', file=sys.stderr)
     adjListList, edgeNumList = getAdjListList(dist, vectors.shape[0], thresholdList, mapping, nFeature)
     
     for i, threshold in enumerate(thresholdList):
         edgeNum = edgeNumList[i]
-        print('Threshold:', threshold, ' #edges:', edgeNum, ' avgEdgeNum:', edgeNum/len(volc), file=sys.stderr)
-
+        print('Threshold:', threshold, ' #edges:', edgeNum, ' avgEdgeNum:', edgeNum/nFeature, file=sys.stderr)
     return adjListList
 
 def getAdjListList(dist, nFeatureOfVector, thresholdList, mapping, nFeature):
@@ -69,6 +101,39 @@ def getAdjList(dist, nFeatureOfVector, thresholdList, mapping, nFeature):
     return adjList, cnt
 
 # get all feature vectors
+def getFeatureVectorsByGroup(volc, wordVector):
+    # first divide feature into several groups
+    groups = divideFeatureIntoGroup(volc)
+    print(groups.keys(), file=sys.stderr)
+    groupVectors = dict()
+    groupMapping = dict()
+    groupVolc = dict()
+    for fType, idList in groups.items():
+        vectors = list() # feature vectors
+        mapping = list() # mapping[i] is the original index if vectors[i]
+        newVolc = Volc() # newVolc
+        for i in idList:
+            vector = calcFeatureVector(i, volc, wordVector)
+            if vector is not None:
+                vectors.append(vector)
+                newVolc.addWord(volc.getWord(i))
+                mapping.append(i)
+        groupVectors[fType] = np.array(vectors)
+        groupMapping[fType] = mapping
+        groupVolc[fType] = newVolc
+    return groupVectors, groupVolc, groupMapping
+
+def divideFeatureIntoGroup(volc):
+    groups = dict()
+    for i in range(0, len(volc)):
+        v = volc.getWord(i)
+        fType = checkType(v)
+        if fType not in groups:
+            groups[fType] = list()
+        groups[fType].append(i)
+    return groups
+
+# get all feature vectors
 def getFeatureVectors(volc, wordVector):
     vectors = list() # feature vectors
     mapping = list() # mapping[i] is the original index if vectors[i]
@@ -88,14 +153,14 @@ def calcFeatureVector(index, volc, wordVector):
     vector = None
     if fType == 'Word':
         vector = np.array(wordVector[v]) if v in wordVector else vector
-    elif fType in ['T', 'H']: #TODO
+    elif fType in ['H_P', 'T_P', 'H/T_P']: 
         assert len(v) == 3
         sign = __getSign(v[2])
         vector = sign * wordVector[v[1]] if v[1] in wordVector else vector           
-        #print(sign)
-    elif fType in ['OT', 'HO']:
+    elif fType in ['H_N', 'T_N', 'H/T_N']:
+        vector = wordVector[v[1]] if v[1] in wordVector else vector
+    elif fType in ['OT', 'HO', 'HO/OT']:
         sign = __getSign(v[2])
-        #print(sign)
         for i in [1, 3]:
             if v[i] not in wordVector: continue
             if vector is None: 
@@ -103,7 +168,7 @@ def calcFeatureVector(index, volc, wordVector):
             else:
                 vector += wordVector[v[i]]
         if vector is not None: vector = vector * sign
-    elif fType in ['HT']: #TODO
+    elif fType in ['HT']: 
         pass
     elif fType in ['HOT']:
         pass
@@ -120,14 +185,33 @@ def calcFeatureVector(index, volc, wordVector):
 
 
 def __getSign(string):
-    return int(string[string.find('sign')+4:])
+    if string.find('sign') == -1:
+        return None
+    else:
+        return int(string[string.find('sign')+4:])
+
+# T_N: target & sign = 0
+# H_N: holder & sign = 0
+# T_P: target & sign = +1/-1
+# H_P: target & sign = +1/-1
+# H/T_N: holder or target & sign = 0
+# H/T_P: holder or target & sign = +1/-1
+typeMappingV1 = { 'T_N': 'H/T_N', 'H_N':'H/T_N', 'T_P':'H/T_P', 'H_P':'H/T_P',  'OT': 'HO/OT', 'HO': 'HO/OT' }
+typeMappingV2 = { 'T_N': 'T_N', 'H_N':'H_N', 'T_P':'T_P', 'H_P':'H_P',  'OT': 'OT', 'HO': 'HO' }
+typeMapping = typeMappingV1
 
 def checkType(v):
     if type(v) == str:
         return 'Word'
     elif type(v) == tuple:
-        if v[0] in ['T', 'OT', 'HO', 'H', 'HT', 'HOT']:
-            return v[0]
+        if v[0] in ['T', 'H'] and len(v) >= 3 and __getSign(v[2]) is not None:
+            sign = __getSign(v[2])
+            if sign == 0:
+                return typeMapping[v[0] + '_N']
+            else:
+                return typeMapping[v[0] + '_P']
+        elif v[0] in ['OT', 'HO', 'HT', 'HOT']: #not support HT HOT
+            return typeMapping[v[0]]
         elif len(v) == 2:
             return 'BiWord'
         elif len(v) == 3:
@@ -135,7 +219,12 @@ def checkType(v):
     else:
         return None
 
-
+def setType(version):
+    global typeMapping
+    if version == 1:
+        typeMapping = typeMappingV1
+    elif version == 2:
+        typeMapping = typeMappingV2
 
 # given coefficient(weight) of classifier and feature adjacency list
 # generate projection model for mergin features
@@ -221,15 +310,20 @@ def saveAdjWordFile(filename, adjList, volc):
 
 if __name__ == '__main__':
     if len(sys.argv) < 6:
-        print('Usage:', sys.argv[0], 'WordVector(.vector) pickleFile outPrefix threshold1 threshold2 ...', file=sys.stderr)
+        print('Usage:', sys.argv[0], 'WordVector(.vector) pickleFile outPrefix version threshold1 threshold2 ...', file=sys.stderr)
         exit(-1)
 
     wordVectorFile = sys.argv[1]
     pickleFile = sys.argv[2]
     outPrefix = sys.argv[3]
+    version = int(sys.argv[4])
     thresholdList = list()
-    for i in range(4, len(sys.argv)):
+    for i in range(5, len(sys.argv)):
         thresholdList.append(float(sys.argv[i]))
+
+    # set version 
+    setType(version)
+    print('typeMapping:', typeMapping, file=sys.stderr)
 
     # read word vectors
     volc, vectors = readWordVector(wordVectorFile)
@@ -239,9 +333,10 @@ if __name__ == '__main__':
     with open(pickleFile, 'r+b') as f:
         p = pickle.load(f)
     volc = p['mainVolc']
+    print('# feature:', len(volc), file=sys.stderr)
 
-    vectors, newVolc, mapping = getFeatureVectors(volc, wordVector)
-    adjListList = calcSimAndFilterAdjList(vectors, mapping, thresholdList, len(volc))
+    groupVectors, groupVolc, groupMapping = getFeatureVectorsByGroup(volc, wordVector)
+    adjListList = calcSimAndFilterAdjListByGroup(groupVectors, groupMapping, thresholdList, len(volc))
     
     for i, adjList in enumerate(adjListList):
         filename = outPrefix + '_T%g.adjList' % (thresholdList[i])

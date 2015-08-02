@@ -24,17 +24,25 @@ if ans != 'Y':
 
 ### raw feature ###
 rDir = './classifier/merged_raw'
-resultFile = 'mergedRaw20150727.csv'
+resultFile = 'mergedRaw20150731.csv'
 for t in [3, 4, 5, 13]:
-    for f in ['merge1', 'merge2']:
-        cmd = 'python3 ./classifier/Run.py ./feature/%s/t%d_%s_df2.pickle 3 %s/t%d_%s_df2_log.pickle > %s/t%d_%s_df2_results.csv' % (f, t, f, rDir, t, f, rDir, t, f)
-        #print(cmd)
-        #sender.putTask(cmd)
+    #for f in ['merge1', 'merge2']:
+    for f in ['merge2_noPOS']:
+        for preprocess in ['minmax']:
+            logFile = '%s/t%d_%s_%s_df2_log.pickle' % (rDir, t, f, preprocess)
+            rFile = '%s/t%d_%s_%s_df2_results.csv' % (rDir, t, f, preprocess)
+            cmd = 'python3 ./classifier/Run.py ./feature/%s/t%d_%s_df2.pickle 3 -outLogPickle %s' % (f, t, f, logFile)
+            if preprocess == 'minmax':
+                cmd += ' --preprocess -method minmax > %s' % (rFile)
+            else:
+                cmd += ' > %s' % (rFile)
+            #print(cmd)
+            #sender.putTask(cmd)
     
-        #cmd = 'python3 CollectResult.py %s/t%d_%s_df2_results.csv >> %s' % (rDir, t, f, resultFile)
-        #print(cmd)
-        #os.system(cmd)
-    #os.system('echo "" >> %s' % (resultFile))
+            cmd = 'python3 CollectResult.py %s >> %s' % (rFile, resultFile)
+            print(cmd)
+            os.system(cmd)
+        #os.system('echo "" >> %s' % (resultFile))
 
 
 
@@ -142,8 +150,8 @@ for t in [3, 4, 5, 13]:
                         cmd = cmd + ' -%s %s' % (key, str(value))
                 cmd = cmd + ' > %s/%s_result.csv' % (rDir, task)
                 
-                print(cmd)
-                sender.putTask(cmd)
+                #print(cmd)
+                #sender.putTask(cmd)
 
                 #cmd = 'python3 CollectResult.py %s/%s_result.csv >> %s' % (rDir, task, resultFile)
                 #print(cmd)
