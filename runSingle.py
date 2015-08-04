@@ -23,18 +23,18 @@ if ans != 'Y':
     exit(0)
 
 
-resultFile = 'SingleRawNorm20150724.csv'
-resultDir = './classifier/single'
-    #for f in ['Dep_stance']:
+resultFile = 'SingleMinMax20150804.csv'
+rDir = './classifier/single'
 #for f in ['BOW_tf', '2Word', '3Word', 'Dep_PP', 'Dep_Full', 'Dep_POS', 'Dep_PPAll', 'Dep_FullAll', 'Dep_POSAll', 'Dep_stance']: 
-for f in ['BOW_tf', 'Dep_PP', 'Dep_Full', 'Dep_POS', 'Dep_PPAll', 'Dep_FullAll', 'Dep_POSAll', 'Dep_stance']: 
+for f in ['BOW_tf', '2Word', '3Word', 'Dep_PP', 'Dep_Full', 'Dep_PPAll', 'Dep_FullAll']: 
     for t in [3, 4, 5, 13]:
-        taskName = 't%d_norm_%s_df2' % (t, f)
-        cmd = 'python3 ./classifier/Run.py ./feature/lengthNorm/%s/%s.pickle 3 %s/%s.pickle > %s/%s_results.csv' % (f, taskName, resultDir, taskName, resultDir, taskName)
+        data = 't%d_%s_df2' % (t, f)
+        task = '%s_minmax' % (data)
+        cmd = 'python3 ./classifier/Run.py ./feature/%s/%s.pickle 3 -outLogPickle %s/%s_log.pickle --preprocess -method minmax > %s/%s_result.csv' % (f, data, rDir, task, rDir, task)
         #print(cmd)
         #sender.putTask(cmd)
     
-        cmd = 'python3 CollectResult.py %s/%s_results.csv >> %s' % (resultDir, taskName, resultFile)
+        cmd = 'python3 CollectResult.py %s/%s_result.csv >> %s' % (rDir, task, resultFile)
         print(cmd)
         os.system(cmd)
     os.system('echo "" >> %s' % (resultFile))

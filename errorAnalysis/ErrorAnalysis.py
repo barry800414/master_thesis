@@ -252,7 +252,7 @@ if __name__ == '__main__':
         logP = pickle.load(f)
     outFilePrefix = sys.argv[3]
     
-    log0 = dataP[0]
+    log0 = logP[0]
     clf = log0['clf']
     params = log0['param']
     volcDict = { 'main': dataP['mainVolc'] }

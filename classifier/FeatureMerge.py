@@ -1,6 +1,7 @@
 
 import sys, math, pickle, copy
 from WordMerge import *
+from sklearn.cluster import KMeans
 
 class FeatureMergingModel():
     def __init__(self, clusters, oriDim):
@@ -234,6 +235,49 @@ def featureClustering(coef, volc, adjSet):
     negClusters = clusterFeatures(negSet, adjSet)
     model = genFeatureMergingModel(posClusters, negClusters, volc)
     return model
+
+
+def featureClustering_KMeans_byGroup(groupVectors, groupMapping, nClusters, max_iter=300):
+    finalClusters = list()
+    oriDim = 0
+    for fType, vectors in groupVectors.items():
+        print('feature type:', fType, ' #features:', vectors.shape[0], file=sys.stderr)
+        groupSet = set([i for i in range(0, len(vectors))])
+        clusters = clusterFeatures_KMeans(groupSet, vectors, groupMapping[fType], nClusters, max_iter)
+        finalClusters.extend(clusters)
+        oriDim += len(vectors)
+
+    checkClusters(finalClusters)
+    model = FeatureMergingModel(clusters, oriDim)
+    return model
+
+
+def featureClustering_KMeans_byGroup_TwoSide(coef, groupVectors, groupMapping, nClusters, max_iter=300):
+    posSet, negSet = dividePosNegSet(coef)
+
+    finalClusters = list()
+    oriDim = 0
+    for fType, vectors in groupVectors.items():
+        print('feature type:', fType, ' #features:', vectors.shape[0], file=sys.stderr)
+        mapping = groupMapping[fType]
+        invMap = { old:new for new, old in enumerate(mapping) }
+        
+        groupSet = set(mapping) & posSet
+        groupSet = set([invMap[i] for i in groupSet])
+        clusters = clusterFeatures_KMeans(groupSet, vectors, groupMapping[fType], nClusters, max_iter)
+        finalClusters.extend(clusters)
+
+        groupSet = set(mapping) & negSet
+        groupSet = set([invMap[i] for i in groupSet])
+        clusters = clusterFeatures_KMeans(groupSet, vectors, groupMapping[fType], nClusters, max_iter)
+        finalClusters.extend(clusters)
+    
+        oriDim += len(vectors)
+
+    checkClusters(finalClusters)
+    model = FeatureMergingModel(clusters, oriDim)
+    return model
+
     
 # given coefficient(weight) if classifier, divide feature into two group, 
 # (positvie and negative), assume binary classification
@@ -271,6 +315,33 @@ def clusterFeatures(groupSet, adjSet):
     for i in remainSet:
         clusters.append([i])
     return clusters
+
+def clusterFeatures_KMeans(groupSet, vectors, oriMapping, nClusters, max_iter=300):
+    nClusters = nClusters if nClusters > 1 else int(nClusters * len(groupSet))
+
+    X = list()
+    remainSet = set()
+    mapping = list()
+    for i in groupSet:
+        if vectors[i] is not None:
+            X.append(vectors[i])
+            mapping.append(oriMapping[i])
+        else:
+            remainSet.add(oriMapping[i])
+    X = np.array(X)
+
+    print('Running KMeans ... n_clusters:', nClusters, ' max_iter:', max_iter, file=sys.stderr)
+    est = KMeans(n_clusters=nClusters, max_iter=max_iter)
+    label = est.fit_predict(X)
+    clusters = [list() for i in range(0, nClusters)]
+    for i, l in enumerate(label):
+        clusters[l].append(mapping[i])
+
+    for i in remainSet:
+        clusters.append([i])
+
+    return clusters
+
 
 def genFeatureMergingModel(posClusters, negClusters, volc):
     clusters = copy.deepcopy(posClusters)

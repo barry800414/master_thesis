@@ -34,7 +34,7 @@ Date: 2015/03/29
 
 # class for providing frameworks for running experiments
 class RunExp:
-    def selfTrainTestNFoldWithFC(version, X, y, volc, adjSet, clfName, scorerName, randSeed=1, test_folds=10,
+    def selfTrainTestNFoldWithFC(version, X, y, groupVectors, groupMapping, nClusters, clfName, scorerName, randSeed=1, test_folds=10,
             cv_folds=10, fSelectConfig=None, preprocess=None, n_jobs=-1, outfile=sys.stdout):
         # check data
         if not DataTool.XyIsValid(X, y): #do nothing
@@ -51,11 +51,11 @@ class RunExp:
             if version == 1:
                 print('Running version 1...', file=sys.stderr)
                 (clf, bestParam, trainScore, yTrainPredict, valScore, model, newXTest) = ML.GridSearchCVandTrainWithFC(
-                        XTrain, yTrain, XTest, preprocess, volc, adjSet, clfName, scorerName, cv_folds, randSeed, n_jobs=n_jobs)
+                        XTrain, yTrain, XTest, preprocess, groupVectors, groupMapping, nClusters, clfName, scorerName, cv_folds, randSeed, n_jobs=n_jobs)
             elif version == 2:
                 print('Running version 2...', file=sys.stderr)
                 (clf, bestParam, trainScore, yTrainPredict, valScore, model, newXTest) = ML.GridSearchCVandTrainWithFC_v2(
-                        XTrain, yTrain, XTest, preprocess, volc, adjSet, clfName, scorerName, cv_folds, randSeed, n_jobs=n_jobs)
+                        XTrain, yTrain, XTest, preprocess, groupVectors, groupMapping, nClusters, clfName, scorerName, cv_folds, randSeed, n_jobs=n_jobs)
 
             if XTest is None or yTest is None:
                 predict = { 'yTrainPredict': yTrainPredict }
@@ -352,8 +352,8 @@ class DataTool:
 def trainTestWithFC_OneTask(XTrain, yTrain, XTest, yTest, clfName, clfParams, scorerName):
     return ML.trainTestWithFC(XTrain, yTrain, XTest, yTest, clfName, clfParams, scorerName)
 
-def trainFirstandFC_OneTask(XTrain, yTrain, XTest, preprocess, volc, adjSet):
-    return ML.trainFirstandFC(XTrain, yTrain, XTest, preprocess, volc, adjSet)
+def trainFirstandFC_OneTask(XTrain, yTrain, XTest, preprocess, groupVectors, groupMapping, nClusters):
+    return ML.trainFirstandFC(XTrain, yTrain, XTest, preprocess, groupVectors, groupMapping, nClusters)
 
 # The class for providing function to do machine learning procedure
 class ML:
@@ -362,7 +362,7 @@ class ML:
             adjSet, clfName, scorerName, n_folds, randSeed, n_jobs=-1):
 
         # train first to do feature clustering
-        newXTrain, newXTest, model = ML.trainFirstandFC(XTrain, yTrain, XTest, preprocess, volc, adjSet)
+        newXTrain, newXTest, model = ML.trainFirstandFC(XTrain, yTrain, XTest, preprocess, groupVectors, groupMapping, nClusters)
 
         # find best parameters
         (clf, bestParam, trainScore, yTrainPredict, valScore) = ML.GridSearchCVandTrain(
@@ -409,15 +409,15 @@ class ML:
 
     # version2
     # 10-fold -> train first time on val -> feature merge -> grid search -> train first on test -> feature merge
-    def GridSearchCVandTrainWithFC_v2(XTrain, yTrain, XTest, preprocess, volc, adjSet,
+    def GridSearchCVandTrainWithFC_v2(XTrain, yTrain, XTest, preprocess, groupVectors, groupMapping, nClusters,
             clfName, scorerName, n_folds, randSeed, n_jobs=-1):
         # find best parameters
         (valScore, bestParams) = ML.GridSearchCVWithFC_v2(XTrain, yTrain, 
-                preprocess, volc, adjSet, clfName, scorerName, n_folds, randSeed, n_jobs)
+                preprocess, groupVectors, groupMapping, nClusters, clfName, scorerName, n_folds, randSeed, n_jobs)
         
         # train first to do feature clustering
         newXTrain, newXTest, model = ML.trainFirstandFC(XTrain, yTrain, XTest, 
-                preprocess, volc, adjSet)
+                preprocess, groupVectors, groupMapping, nClusters)
 
         # refit on training data by best parameters
         (clf, yTrainPredict, trainScore) = ML.trainWithFC(newXTrain, 
@@ -426,7 +426,7 @@ class ML:
         return (clf, bestParams, trainScore, yTrainPredict, valScore, model, newXTest)
 
     # version2
-    def GridSearchCVWithFC_v2(X, y, preprocess, volc, adjSet, clfName, 
+    def GridSearchCVWithFC_v2(X, y, preprocess, groupVectors, groupMapping, nClusters, clfName, 
             scorerName, n_folds, randSeed, n_jobs):
    
         kfold = StratifiedKFold(y, n_folds=n_folds, random_state=randSeed)
@@ -435,7 +435,7 @@ class ML:
 
         # train first time to do feature clustering for each fold
         out = Parallel(n_jobs=n_jobs)(delayed(trainFirstandFC_OneTask)(
-            X[train], y[train], X[test], preprocess, volc, adjSet)
+            X[train], y[train], X[test], preprocess, groupVectors, groupMapping, nClusters)
                 for k, (train, test) in enumerate(kfold))
         XTrainList = [out[i][0] for i in range(0, n_folds)]
         XTestList = [out[i][1] for i in range(0, n_folds)]
@@ -462,14 +462,14 @@ class ML:
         return (bestScore, bestParams)
 
     # version1 and version2 will use it
-    def trainFirstandFC(XTrain, yTrain, XTest, preprocess, volc, adjSet):
+    def trainFirstandFC(XTrain, yTrain, XTest, preprocess, groupVectors, groupMapping, nClusters):
         # train first time with default classifier
         clf = ML.genClf(None)
         #print('Training using default classifier ...', file=sys.stderr)
         clf.fit(XTrain, yTrain)
 
         # feature clustering 
-        model = FM.featureClustering(clf.coef_, volc, adjSet)
+        model = FM.featureClustering_KMeans_byGroup_TwoSide(clf.coef_, groupVectors, groupMapping, nClusters)
 
         # merge train & test -> remove df < 2 & preprocess -> split X
         X = vstack((XTrain, XTest)).tocsr()

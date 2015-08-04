@@ -38,7 +38,7 @@ Date: 2015/03/29
 # class for providing frameworks for running experiments
 class RunExp:
     def selfTrainTest(X, y, clfName, scorerName, randSeed=1, testSize=0.2, 
-            n_folds=3, fSelectConfig=None, prefix='', outfile=sys.stdout):
+            n_folds=3, fSelectConfig=None, prefix='', n_jobs=-1, outfile=sys.stdout):
         # check data
         if not DataTool.XyIsValid(X, y): #do nothing
             return
@@ -48,6 +48,7 @@ class RunExp:
         (XTrain, XTest, yTrain, yTest, trainIndex, testIndex) = DataTool.stratifiedSplitTrainTest(
                 X, y, randSeed, testSize)
         
+
         # do feature selection if config is given
         if fSelectIsBeforeClf(fSelectConfig) == True:
             print('before selection:', XTrain.shape, file=sys.stderr)
@@ -59,7 +60,7 @@ class RunExp:
 
         # training using validation
         (clf, bestParam, bestValScore, yTrainPredict) = ML.train(XTrain, 
-                yTrain, clfName, scorer, randSeed=randSeed, n_folds=n_folds)
+                yTrain, clfName, scorer, randSeed=randSeed, n_folds=n_folds, n_jobs=n_jobs)
         if XTest is None or yTest is None:
             predict = { 'yTrainPredict': yTrainPredict }
         else:
@@ -80,7 +81,7 @@ class RunExp:
         return log
     
     def selfTrainTestNFold(X, y, clfName, scorerName, randSeed=1, test_folds=10,
-            cv_folds=10, fSelectConfig=None, prefix='', outfile=sys.stdout):
+            cv_folds=10, fSelectConfig=None, prefix='', n_jobs=-1, outfile=sys.stdout):
         # check data
         if not DataTool.XyIsValid(X, y): #do nothing
             return
@@ -103,7 +104,7 @@ class RunExp:
 
             # training using validation
             (clf, bestParam, trainScore, valScore, yTrainPredict) = ML.train(XTrain, 
-                    yTrain, clfName, scorer, randSeed=randSeed, n_folds=cv_folds)
+                    yTrain, clfName, scorer, randSeed=randSeed, n_folds=cv_folds, n_jobs=n_jobs)
             if XTest is None or yTest is None:
                 predict = { 'yTrainPredict': yTrainPredict }
             else:
@@ -682,11 +683,10 @@ class DataTool:
 
 # The class for providing function to do machine learning procedure
 class ML:
-    def train(XTrain, yTrain, clfName, scorer, n_folds, randSeed=1, n_jobs=2):
+    def train(XTrain, yTrain, clfName, scorer, n_folds, randSeed=1, n_jobs=-1):
         # make cross validation iterator 
         #print(' n_folds:', n_folds, end='', file=sys.stderr) 
-        kfold = StratifiedKFold(yTrain, n_folds=n_folds, 
-                    shuffle=True, random_state=randSeed)
+        kfold = StratifiedKFold(yTrain, n_folds=n_folds, shuffle=True, random_state=randSeed)
         
         return ML.__train(kfold, XTrain, yTrain, clfName, scorer, n_folds, randSeed, n_jobs)
 
