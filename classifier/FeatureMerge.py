@@ -359,14 +359,14 @@ def saveAdjList(filename, adjList):
                 print(toId, end=' ', file=f)
             print('', file=f)
 
-def readAdjList(filename):
+def readAdjList(filename, offset=0):
     adjSet = list()
     with open(filename, 'r') as f:
         for fromId, line in enumerate(f):
             toIds = line.strip().split()
             toSet = set()
             for toId in toIds:
-                toSet.add(int(toId))
+                toSet.add(int(toId) + offset)
             adjSet.append(toSet)
     return adjSet
 
