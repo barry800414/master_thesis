@@ -67,7 +67,10 @@ if __name__ == '__main__':
     newX = model.transform(X)
     print('X:', X.shape, ' -> newX:', newX.shape, file=sys.stderr)
 
-    # preprocess if necessary        
+    logList = [ {'model': model } ]
+
+    # preprocess if necessary     
+    '''
     if preprocess is not None:
         newX = DataTool.preprocessX(newX, preprocess['method'], preprocess['params'])
 
@@ -75,8 +78,9 @@ if __name__ == '__main__':
     for seed in range(1, seedNum+1):
         logs = RunExp.selfTrainTestNFold(newX, y, 'MaxEnt', 'Accuracy', 
                 fSelectConfig=fSelectConfig, randSeed=seed, test_folds=10, cv_folds=10, n_jobs=2)
+        logs[0]['model'] = model
         logList.extend(logs)
-    
+    '''
     if outLogPickle is not None:
         with open(outLogPickle, 'w+b') as f:
             pickle.dump(logList, f)
