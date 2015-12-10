@@ -34,6 +34,7 @@ Date: 2015/03/29
 '''
 
 # class for providing frameworks for running experiments
+# FIXME: there is no Kmeans algorithm inside??
 class RunExp:
     def selfTrainTestNFoldWithFC(version, X, y, groupVectors, groupMapping, nClusters, clfName, scorerName, randSeed=1, test_folds=10,
             cv_folds=10, fSelectConfig=None, preprocess=None, n_jobs=-1, outfile=sys.stdout):

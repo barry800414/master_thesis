@@ -41,8 +41,8 @@ def parseArgument(argv, start):
     return outLogPickle, fSelectConfig, preprocess
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3 :
-        print('Usage:', sys.argv[0], 'pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle]', file=sys.stderr)
+    if len(sys.argv) < 5 :
+        print('Usage:', sys.argv[0], 'pickleFile wordVectorFile(word2vec text) nClusters seedNum [-outLogPickle LogPickle]', file=sys.stderr)
         print('[--preprocess -method xxx -param1 value1 ...]', file=sys.stderr)
         exit(-1)
     
@@ -65,11 +65,12 @@ if __name__ == '__main__':
     print(X.shape, file=sys.stderr)
     ResultPrinter.printFirstLine()
 
-    # feature merge by community detection
+    # get all feature vectors 
     groupVectors, groupVolc, groupMapping = getFeatureVectorsByGroup(volc, wordVector)
 
     logList = list()
     for seed in range(1, seedNum+1):
+        #FIXME: here is community detection?
         logs = RunExp.selfTrainTestNFoldWithFC(2, X, y, groupVectors, groupMapping, 
                 nClusters, 'MaxEnt', 'Accuracy', fSelectConfig=fSelectConfig, preprocess=preprocess, 
                 randSeed=seed, test_folds=10, cv_folds=10, n_jobs=2)

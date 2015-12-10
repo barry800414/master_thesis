@@ -101,7 +101,8 @@ def getAdjList(dist, nFeatureOfVector, thresholdList, mapping, nFeature):
             index += 1
     return adjList, cnt
 
-# get all feature vectors
+# firstly divide features into groups, and calculate each feature
+# vectors by word vector. 
 def getFeatureVectorsByGroup(volc, wordVector):
     # first divide feature into several groups
     groups = divideFeatureIntoGroup(volc)

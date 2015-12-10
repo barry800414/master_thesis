@@ -65,8 +65,10 @@ if __name__ == '__main__':
     print(X.shape, file=sys.stderr)
     ResultPrinter.printFirstLine()
 
-    # feature merge by community detection
+    # convert it to feature vectors
     groupVectors, groupVolc, groupMapping = getFeatureVectorsByGroup(volc, wordVector)
+    
+    # feature merging using Kmeans
     model = featureClustering_KMeans_byGroup(groupVectors, groupMapping, nClusters, max_iter=300)
     newX = model.transform(X)
     print('X:', X.shape, ' -> newX:', newX.shape, file=sys.stderr)

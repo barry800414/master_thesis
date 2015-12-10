@@ -21,16 +21,16 @@ This folder contains all the core algorithms
     --fSelect -method RF
 
 ## Feature clustering (using community detection) firstly, then normal training and testing (Direct Feature Clustering, DFC)
-    python3 RunWithDirectFC.py pickleFile adjListFile seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]
+    python3 DFC.py pickleFile adjListFile seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]
     
 * pickleFile is in ../feature
 * adjListFile is in ./featureMerge
 
-## Feature clustering (using K-means) firstly, then normal training and testing
-    python3 RunWithDirectFC_KMeans.py pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]
+## Feature clustering (using K-means) firstly, then normal training and testing (Direct Feature Clustering using Kmeans)
+    python3 DFC_KMeans.py pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]
 
 ## Feature clustering (using community detection) in each train&test phase. (Our proposed solution)
-    python3 RunWithFC.py pickleFile adjListFile version seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]
+    python3 FC.py pickleFile adjListFile version seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]
     
 * pickleFile is in ../feature
 * adjListFile is in ./featureMerge
