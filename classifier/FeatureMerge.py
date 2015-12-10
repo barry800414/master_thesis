@@ -119,6 +119,10 @@ def getFeatureVectorsByGroup(volc, wordVector):
                 vectors.append(vector)
                 newVolc.addWord(volc.getWord(i))
                 mapping.append(i)
+            else:
+                vectors.append(None)
+                newVolc.addWord(None)
+                mapping.append(i)
         groupVectors[fType] = np.array(vectors)
         groupMapping[fType] = mapping
         groupVolc[fType] = newVolc
@@ -252,30 +256,38 @@ def featureClustering_KMeans_byGroup(groupVectors, groupMapping, nClusters, max_
     return model
 
 
-def featureClustering_KMeans_byGroup_TwoSide(coef, groupVectors, groupMapping, nClusters, max_iter=300):
+def featureClustering_KMeans_byGroup_TwoSide(coef, groupVectors, groupMapping, nClusters, max_iter=100):
     posSet, negSet = dividePosNegSet(coef)
 
     finalClusters = list()
     oriDim = 0
     for fType, vectors in groupVectors.items():
+        oriDim += vectors.shape[0]
+
+    for fType, vectors in groupVectors.items():
         print('feature type:', fType, ' #features:', vectors.shape[0], file=sys.stderr)
         mapping = groupMapping[fType]
         invMap = { old:new for new, old in enumerate(mapping) }
         
-        groupSet = set(mapping) & posSet
-        groupSet = set([invMap[i] for i in groupSet])
-        clusters = clusterFeatures_KMeans(groupSet, vectors, groupMapping[fType], nClusters, max_iter)
+        gPosSet = set(mapping) & posSet
+        gPosSet = set([invMap[i] for i in gPosSet])
+        gNegSet = set(mapping) & negSet
+        gNegSet = set([invMap[i] for i in gNegSet])
+        pNum = len(gPosSet)
+        nNum = len(gNegSet)
+        
+        n1 = int(nClusters[fType] * float(pNum) / (pNum + nNum))
+        n2 = int(nClusters[fType] * float(nNum) / (pNum + nNum))
+        n1 = n1 if n1 > 1 else 2
+        n2 = n2 if n2 > 1 else 2
+        clusters = clusterFeatures_KMeans(gPosSet, vectors, groupMapping[fType], n1, max_iter)
         finalClusters.extend(clusters)
 
-        groupSet = set(mapping) & negSet
-        groupSet = set([invMap[i] for i in groupSet])
-        clusters = clusterFeatures_KMeans(groupSet, vectors, groupMapping[fType], nClusters, max_iter)
+        clusters = clusterFeatures_KMeans(gNegSet, vectors, groupMapping[fType], n2, max_iter)
         finalClusters.extend(clusters)
     
-        oriDim += len(vectors)
-
     checkClusters(finalClusters)
-    model = FeatureMergingModel(clusters, oriDim)
+    model = FeatureMergingModel(finalClusters, oriDim)
     return model
 
     
@@ -316,7 +328,7 @@ def clusterFeatures(groupSet, adjSet):
         clusters.append([i])
     return clusters
 
-def clusterFeatures_KMeans(groupSet, vectors, oriMapping, nClusters, max_iter=300):
+def clusterFeatures_KMeans(groupSet, vectors, oriMapping, nClusters, max_iter=100):
     nClusters = nClusters if nClusters > 1 else int(nClusters * len(groupSet))
 
     X = list()
@@ -331,9 +343,12 @@ def clusterFeatures_KMeans(groupSet, vectors, oriMapping, nClusters, max_iter=30
     X = np.array(X)
 
     print('Running KMeans ... n_clusters:', nClusters, ' max_iter:', max_iter, file=sys.stderr)
-    est = KMeans(n_clusters=nClusters, max_iter=max_iter)
+    nC = nClusters - len(remainSet)
+    #print(nC, nClusters, len(remainSet))
+    nC = nC if nC > 1 else 2
+    est = KMeans(n_clusters=nC, max_iter=max_iter)
     label = est.fit_predict(X)
-    clusters = [list() for i in range(0, nClusters)]
+    clusters = [list() for i in range(0, nC)]
     for i, l in enumerate(label):
         clusters[l].append(mapping[i])
 

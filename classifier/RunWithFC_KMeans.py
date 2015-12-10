@@ -43,7 +43,7 @@ def parseArgument(argv, start):
 if __name__ == '__main__':
     if len(sys.argv) < 3 :
         print('Usage:', sys.argv[0], 'pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle]', file=sys.stderr)
-        print('[--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]', file=sys.stderr)
+        print('[--preprocess -method xxx -param1 value1 ...]', file=sys.stderr)
         exit(-1)
     
     pickleFile = sys.argv[1]
@@ -53,7 +53,6 @@ if __name__ == '__main__':
 
     outLogPickle, fSelectConfig, preprocess = parseArgument(sys.argv, 5)
     print('OutLogPickleFile:', outLogPickle, file=sys.stderr)
-    print('fSelectConfig:', fSelectConfig, file=sys.stderr)
     print('preprocess:', preprocess, file=sys.stderr)
 
     # read word vectors
