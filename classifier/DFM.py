@@ -1,6 +1,6 @@
 
 import sys, pickle
-from RunExperiments import RunExp, ResultPrinter
+from RunExp import RunExp, ResultPrinter, DataTool
 from FeatureMerge import *
 
 def parseArgument(argv, start):
@@ -42,38 +42,35 @@ def parseArgument(argv, start):
 
 if __name__ == '__main__':
     if len(sys.argv) < 3 :
-        print('Usage:', sys.argv[0], 'pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle]', file=sys.stderr)
+        print('Usage:', sys.argv[0], 'pickleFile adjListFile seedNum [-outLogPickle LogPickle]', file=sys.stderr)
         print('[--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]', file=sys.stderr)
         exit(-1)
     
     pickleFile = sys.argv[1]
-    wordVectorFile = sys.argv[2]
-    nClusters = float(sys.argv[3])
-    seedNum = int(sys.argv[4])
-    outLogPickle, fSelectConfig, preprocess = parseArgument(sys.argv, 5)
+    adjListFile = sys.argv[2]
+    seedNum = int(sys.argv[3])
+    outLogPickle, fSelectConfig, preprocess = parseArgument(sys.argv, 4)
     print('OutLogPickleFile:', outLogPickle, file=sys.stderr)
     print('fSelectConfig:', fSelectConfig, file=sys.stderr)
     print('preprocess:', preprocess, file=sys.stderr)
 
-    # read word vectors
-    volc, vectors = readWordVector(wordVectorFile)
-    wordVector = toDictType(volc, vectors)
-    
+    adjSet = readAdjList(adjListFile)
     with open(pickleFile, 'r+b') as f:
         p = pickle.load(f)
     X, y, volc = p['X'], p['y'], p['mainVolc']
     print(X.shape, file=sys.stderr)
     ResultPrinter.printFirstLine()
 
-    # convert it to feature vectors
-    groupVectors, groupVolc, groupMapping = getFeatureVectorsByGroup(volc, wordVector)
-    
-    # feature merging using Kmeans
-    model = featureClustering_KMeans_byGroup(groupVectors, groupMapping, nClusters, max_iter=300)
+    # feature merge by community detection
+    clusters = clusterFeatures(set([i for i in range(0, X.shape[1])]), adjSet) 
+    model = genFeatureMergingModel(clusters, list(), volc)
     newX = model.transform(X)
     print('X:', X.shape, ' -> newX:', newX.shape, file=sys.stderr)
 
-    # preprocess if necessary        
+    logList = [ {'model': model } ]
+
+    # preprocess if necessary     
+    '''
     if preprocess is not None:
         newX = DataTool.preprocessX(newX, preprocess['method'], preprocess['params'])
 
@@ -81,9 +78,10 @@ if __name__ == '__main__':
     for seed in range(1, seedNum+1):
         logs = RunExp.selfTrainTestNFold(newX, y, 'MaxEnt', 'Accuracy', 
                 fSelectConfig=fSelectConfig, randSeed=seed, test_folds=10, cv_folds=10, n_jobs=2)
+        logs[0]['model'] = model
         logList.extend(logs)
-    
+    '''
     if outLogPickle is not None:
         with open(outLogPickle, 'w+b') as f:
             pickle.dump(logList, f)
-    
+   

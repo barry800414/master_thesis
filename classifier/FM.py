@@ -1,6 +1,6 @@
 
 import sys, pickle
-from RunExperimentsWithFC import RunExp, ResultPrinter
+from RunExp_FM import RunExp, ResultPrinter
 from FeatureMerge import *
 
 def parseArgument(argv, start):
