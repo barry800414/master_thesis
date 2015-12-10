@@ -15,7 +15,8 @@ from sklearn.naive_bayes import MultinomialNB, GaussianNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix, f1_score, recall_score, accuracy_score, make_scorer
 from sklearn.feature_selection import SelectKBest, SelectPercentile, RFE, RFECV, chi2
-from sklearn.lda import LDA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+
 
 from sklearn.externals.joblib import Parallel, delayed
 from sklearn.base import clone
@@ -560,13 +561,13 @@ class ML:
             parameters = {
                 'penalty': ['l2',],
                 'C': C,
-                'class_weight': ['auto'],
+                'class_weight': ['balanced'],
                 'dual': [True, False],
                 }
             #parameters = {
             #    'penalty': ['l1',],
             #    'C': C,
-            #    'class_weight': ['auto'],
+            #    'class_weight': ['balanced'],
             #    'dual': [False],
             #    }
 
@@ -584,7 +585,7 @@ class ML:
             C = [math.pow(2, i) for i in range(-19,5,2)]
             parameters = {
                     'C': C,
-                    'class_weight': ['auto'],
+                    'class_weight': ['balanced'],
                     'loss': ['squared_hinge'],
                     'dual': [True, False],
                     #'penalty': ['l1', 'l2']
@@ -596,7 +597,7 @@ class ML:
             parameters = {
                     "n_estimators": estNum,
                     "min_samples_split": minSampleSplit,
-                    "class_weight": ['auto']
+                    "class_weight": ['balanced']
                 }
             clf = RandomForestClassifier()
         else:
@@ -688,7 +689,7 @@ class ML:
         elif method in ['LDA', 'LinearDiscriminantAnalysis']:
             print('dimension reduction using LinearDiscriminantAnalysis', file=sys.stderr)
             if 'n_components' in params and 'solver' in params and 'shrinkage' in params:
-                selector = LDA(**params).fit(XTrain.todense(), yTrain)
+                selector = discriminant_analysis.LinearDiscriminantAnalysis(**params).fit(XTrain.todense(), yTrain)
                 newX = selector.transform(XTrain.todense())
         return (newX, selector)
 

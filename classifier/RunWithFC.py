@@ -41,7 +41,7 @@ def parseArgument(argv, start):
     return outLogPickle, fSelectConfig, preprocess
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3 :
+    if len(sys.argv) < 5 :
         print('Usage:', sys.argv[0], 'pickleFile adjListFile version seedNum [-outLogPickle LogPickle]', file=sys.stderr)
         print('[--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]', file=sys.stderr)
         exit(-1)

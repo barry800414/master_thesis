@@ -1,11 +1,43 @@
 
-# Classifier Usage
+## Prerequisites 
+    numpy
+    scipy
+    sklearn
+    networkx 
+    [ Louvain method for community detection|https://bitbucket.org/taynaud/python-louvain ]
+
+## Folders
+    ../feature/: Features pickle file 
+    ./featureMerge: all the adjacency list files 
+
+## Normal training and testing (baseline)
     python3 Run.py pickleFile seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 -param2 value2]
     --fSelect -method chi -top 10
     --fSelect -method RFE -n_features_to_select 100 -step 10 
     --fSelect -method REFCV -step 10 -n_folds 10
     --fSelect -method LinearSVM -C 1.0
     --fSelect -method RF
+
+## Feature clustering (using community detection) firstly, then normal training and testing (Direct Feature Clustering, DFC)
+    python3 RunWithDirectFC.py pickleFile adjListFile seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]
+    
+    pickleFile is in ../feature
+    adjListFile is in ./featureMerge
+
+## Feature clustering (using K-means) firstly, then normal training and testing
+    python3 RunWithDirectFC_KMeans.py pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]
+
+## Feature clustering (using community detection) in each train&test phase. (Our proposed solution)
+    python3 RunWithFC.py pickleFile adjListFile version seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]
+    
+    pickleFile is in ../feature
+    adjListFile is in ./featureMerge
+
+## Feature clustering (using K-Means) in each train&test phase.
+    python3 RunWithFC_KMeans.py pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle] [--preprocess -method xxx -param1 value1 ...]
+
+
+
 
 # Classifier Usage (all train one test framework)
     OneTestRun.py topic seedNum [-topic1 pickle -topic2 pickle ...] [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 -param2 value2]
