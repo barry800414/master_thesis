@@ -2,15 +2,15 @@
 This folder contains all the core algorithms 
 
 ## Prerequisites 
-    numpy
-    scipy
-    sklearn
-    networkx 
-    [ Louvain method for community detection|https://bitbucket.org/taynaud/python-louvain ]
+* numpy
+* scipy
+* sklearn
+* networkx 
+* [Louvain method for community detection](https://bitbucket.org/taynaud/python-louvain)
 
 ## Folders
-    ../feature/: Features pickle file 
-    ./featureMerge: all the adjacency list files 
+* ../feature/: Features pickle file 
+* ./featureMerge: all the adjacency list files 
 
 ## Normal training and testing (baseline)
     python3 Run.py pickleFile seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 -param2 value2]
@@ -37,6 +37,7 @@ This folder contains all the core algorithms
 
 ## Feature clustering (using K-Means) in each train&test phase.
     python3 RunWithFC_KMeans.py pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle] [--preprocess -method xxx -param1 value1 ...]
+
 
 
 
