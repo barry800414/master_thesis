@@ -24,7 +24,7 @@ def convert2Clusters(model):
     assert checkClusters(clusters)
     return clusters
 
-# given coefficient(weight) if classifier, divide feature into two group, 
+# given coefficient(weight) of classifier, divide feature into two group, 
 # (positvie and negative), assume binary classification
 # posList: list of index where weights >= 0
 def getPosNegMapAndRanking(coef):

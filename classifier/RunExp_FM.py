@@ -1,4 +1,6 @@
 
+# Whole framework to do two-side feature merging, using community detection
+
 import sys, math, random, copy
 from collections import defaultdict
 
@@ -28,10 +30,6 @@ from sklearn.cross_validation import PredefinedSplit
 from misc import *
 import FeatureMerge as FM
 
-'''
-The whole experimental framework from X, y to results
-Date: 2015/03/29
-'''
 
 # class for providing frameworks for running experiments
 class RunExp:
@@ -49,6 +47,8 @@ class RunExp:
             yTrain, yTest = y[trainIndex], y[testIndex]
 
             # training using cross-validation and feature clustering 
+            # version1:
+            # version2: 10-fold -> train first time on val -> feature merge -> grid search -> train first on test -> feature merge
             if version == 1:
                 print('Running version 1...', file=sys.stderr)
                 (clf, bestParam, trainScore, yTrainPredict, valScore, model, newXTest) = ML.GridSearchCVandTrainWithFC(
@@ -57,7 +57,7 @@ class RunExp:
                 print('Running version 2...', file=sys.stderr)
                 (clf, bestParam, trainScore, yTrainPredict, valScore, model, newXTest) = ML.GridSearchCVandTrainWithFC_v2(
                         XTrain, yTrain, XTest, preprocess, volc, adjSet, clfName, scorerName, cv_folds, randSeed, n_jobs=n_jobs)
-
+            #TODO: to dump the model (how features are merged) to see the physical meaning 
             if XTest is None or yTest is None:
                 predict = { 'yTrainPredict': yTrainPredict }
             else:
@@ -465,11 +465,11 @@ class ML:
     # version1 and version2 will use it
     def trainFirstandFC(XTrain, yTrain, XTest, preprocess, volc, adjSet):
         # train first time with default classifier
-        clf = ML.genClf(None)
         #print('Training using default classifier ...', file=sys.stderr)
+        clf = ML.genClf(None)
         clf.fit(XTrain, yTrain)
 
-        # feature clustering 
+        # feature clustering #TODO: dump the model to see the physical meaning 
         model = FM.featureClustering(clf.coef_, volc, adjSet)
 
         # merge train & test -> remove df < 2 & preprocess -> split X

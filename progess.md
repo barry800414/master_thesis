@@ -26,4 +26,5 @@ Todo:
       2. ResultStat.py: calculating statistics about the result
     
 4. Should inverstigate the physical meaning when merging features
-    S
+    to do: model (how features are clustered and merged has been dumped), now is to analyze it 
+           need to write a new program 

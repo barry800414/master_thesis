@@ -3,6 +3,8 @@ import sys, pickle
 from RunExp_FM import RunExp, ResultPrinter
 from FeatureMerge import *
 
+# Two side feature merging using community detection
+
 def parseArgument(argv, start):
     fSelectConfig = None
     outLogPickle = None
@@ -62,6 +64,7 @@ if __name__ == '__main__':
     print(X.shape, file=sys.stderr)
     ResultPrinter.printFirstLine()
 
+    # TODO: actually the model(how features are merging) is already included in log (log['model'])
     logList = list()
     for seed in range(1, seedNum+1):
         logs = RunExp.selfTrainTestNFoldWithFC(version, X, y, volc, adjSet, 'MaxEnt', 'Accuracy', 
