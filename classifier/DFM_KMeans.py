@@ -68,7 +68,7 @@ if __name__ == '__main__':
     groupVectors, groupVolc, groupMapping = getFeatureVectorsByGroup(volc, wordVector)
     
     # feature merging using Kmeans
-    model = featureClustering_KMeans_byGroup(groupVectors, groupMapping, nClusters, max_iter=300)
+    model = featureClustering_KMeans_byGroup(groupVectors, groupMapping, nClusters, max_iter=100)
     newX = model.transform(X)
     print('X:', X.shape, ' -> newX:', newX.shape, file=sys.stderr)
     # preprocess if necessary        

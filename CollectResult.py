@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from RunExperiments import ResultPrinter
+from RunExp import ResultPrinter
 
 def readCSV(filename, dataType=None):
     with open(filename, 'r') as f:

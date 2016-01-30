@@ -8,14 +8,14 @@ class SendJob:
     def __init__(self):
         QueueManager.register('get_queue')
         port = 3333
-        self.m = QueueManager(address=('140.112.187.33', port), authkey=b'barry800414')
+        self.m = QueueManager(address=('140.112.31.187', port), authkey=b'barry800414')
         self.m.connect()
         self.queue = self.m.get_queue()
 
     def putTask(self, cmd):
         self.queue.put(cmd)
 
-#sender = SendJob()
+sender = SendJob()
 
 ans = input("Sure to run ? (Y/N)")
 if ans != 'Y':
@@ -34,20 +34,25 @@ wvFile = './classifier/news7852Final.vector'
 #rDir = './featureMerge'
 
 seedNum = 3
-rDir = './featureMerge'
 v = 2
 
 ### run direct feature merging (using KMeans) for single feature
 resultFile = 'Single_DFM_Kmeans_20160130'
-rDir = './result/single_DFM_KMeans'
+rDir = './tmp_result'
+cnt = 0
 for f in ['BOW_tf', '2Word', '3Word', 'Dep_PP', 'Dep_Full', 'Dep_PPAll', 'Dep_FullAll']: 
     for t in [3, 4, 5, 13]:
         for nClusters in [i * 0.01 for i in range(25, 76)]:
             data = 't%d_%s_df2' % (t, f)
             task = '%s_minmax' % (data)
-            cmd = 'python3 ./classifier/DFM_KMeans.py ./feature/%s/%s.pickle %s %f 3 -outLogPickle %s/%s_log.pickle --preprocess -method minmax > %s/%s_result.csv' % (f, data, wvFile, nClusters, rDir, task, rDir, task)
+            #cmd = 'python3 ./classifier/DFM_KMeans.py ./feature/%s/%s.pickle %s %f 3 -outLogPickle %s/%s_log.pickle --preprocess -method minmax > %s/%s_result.csv' % (f, data, wvFile, nClusters, rDir, task, rDir, task)
+            cmd = 'python3 ./classifier/DFM_KMeans.py ./feature/%s/%s.pickle %s %f 3 --preprocess -method minmax > %s/%s.csv' % (f, data, wvFile, nClusters, rDir, task)
+
             print(cmd)
-            #sender.putTask(cmd)
+            cnt = cnt +1
+            sender.putTask(cmd)
+            #if cnt >= 50:
+            #    exit()
         
             #cmd = 'python3 CollectResult.py %s/%s_result.csv >> %s' % (rDir, task, resultFile)
             #print(cmd)
