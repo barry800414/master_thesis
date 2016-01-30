@@ -80,6 +80,8 @@ if __name__ == '__main__':
     lnListInTopic = divideLabelNewsByTopic(lnList)
     mediaVolc = getMediaVolc(lnListInTopic)
 
+    printMediaStat(lnListInTopic)
+
     for t, lnList in sorted(lnListInTopic.items(), key=lambda x:x[0]):
         (labelIndex, unLabelIndex) = getLabelIndex(lnList)
         labelLnList = [lnList[i] for i in labelIndex]

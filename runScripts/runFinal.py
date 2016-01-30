@@ -47,7 +47,7 @@ for t in [5]:
         #print(cmd)
         #sender.putTask(cmd)
 
-# run feature merging (community detection) for single feature
+### run feature merging (community detection) for single feature ###
 resultFile = 'single_FM_20150806.csv'
 preprocess = 'minmax'
 v = 2
@@ -76,7 +76,10 @@ for t in [3, 4, 5, 13]:
             #os.system(cmd)
         #os.system('echo "" >> %s' % (resultFile))
 
-# run feature merging (community detection) for merged feature
+
+
+
+### run feature merging (community detection) for merged feature ###
 thresholdDict = {
     3: { 'BOW_tf': 0.74, '2Word': 0.75, '3Word': 0.69, 'Dep_PPAll': 0.55, 'Dep_FullAll': 0.75 },
     4: { 'BOW_tf': 0.33, '2Word': 0.75, '3Word': 0.68, 'Dep_PPAll': 0.32, 'Dep_FullAll': 0.69 },

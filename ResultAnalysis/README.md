@@ -4,3 +4,7 @@
 
 # the module is to calculate basic statistical information from results, including, 1. max  2. average  3. standard deviation  [4. plot the figure if needed]
     python3 ./ResultStat.py
+
+# the module is to print out feature clusters to see the physical meaning
+    python3 ./PrintFeatureCluster.py PickleFile FeaturePickle
+

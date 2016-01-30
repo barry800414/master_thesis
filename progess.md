@@ -1,5 +1,5 @@
 
-2016/01/07 
+2016/01/07
 Todo:
 2. Should compare the results if using K-Means algorithm
     **see README.md in ./classifier folder 
@@ -27,4 +27,14 @@ Todo:
     
 4. Should inverstigate the physical meaning when merging features
     to do: model (how features are clustered and merged has been dumped), now is to analyze it 
-           need to write a new program 
+    Should run: ./ResultAnalysis/PrintFeatureCluster.py 
+
+5. Should explain why Community detection can win K-Means ?
+    Actually K-Means is too slow (to explain), try other faster clustering algorithm 
+    TODO: 
+        1.find faster clustering algorithm 
+        2.to explain K-Means is too slow
+
+6.  TODO: to find the list of "opinion operator", there are 3 papers to check
+
+7.  
