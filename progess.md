@@ -17,9 +17,17 @@ Todo:
       1. DFM & DFM_KMeans  
       2. FM & FM_KMeans
 
-    There should be 8 results:
-    1. Direct / InDirect
-    2. 
+    There should be 10 results: 1.Direct / InDirect  2. Community / KMeans  3. single / Merged
+    1. Direct Community Single (done)
+    2. Direct Community Merge (done)
+    3. Direct KMeans Single
+    4. Direct KMeans Merge
+    5. InDirect Community Single (done)
+    6. InDirect Community Merge (done)
+    7. InDirect KMeans Single
+    8. InDirect KMeans Merge
+    9. Single 
+    10. Merge  
 
     * to ask Hou how to deploy tasks to other clusters
 
