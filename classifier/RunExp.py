@@ -664,22 +664,29 @@ class DataTool:
                     maxOfCol[ci] = float(v)
                 nowPos += 1
 
-        #print(minOfCol)
-        #print(maxOfCol)
-        nowPos = 0
+        # calculate interval of each feature
         interval = [maxOfCol[i] - minOfCol[i] for i in range(0, colNum)]
-        #print(interval)
         minV, maxV = feature_range
+        
+        # make a new csr_matrix, because of variable type considering, all convert to float64
+        newRows, newCols, newData = list(), list(), list()
+        nowPos = 0
         for ri in range(0, rowNum):
             for ci in colIndex[rowPtr[ri]:rowPtr[ri+1]]:
+                newRows.append(ri)
+                newCols.append(ci)
                 if not float_eq(interval[ci], 0.0):
                     v = data[nowPos]
                     v_std = (v - minOfCol[ci]) / interval[ci]
                     v_scaled = v_std * (maxV - minV) + minV
-                    #print(v, v_std, v_scaled)
-                    data[nowPos] = v_scaled
+                    #data[nowPos] = v_scaled #TODO: variable type problem 
+                    newData.append(v_scaled)
+                else:
+                    newData.append(v)
                 nowPos += 1
-        return X
+
+        newX = csr_matrix((newData, (newRows, newCols)), shape=(rowNum, colNum), dtype=np.float64)
+        return newX
 
 # The class for providing function to do machine learning procedure
 class ML:

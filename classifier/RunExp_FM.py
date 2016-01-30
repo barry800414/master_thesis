@@ -480,6 +480,7 @@ class ML:
         print(X.shape, '--feature merge-->', X1.shape, '--remove df<2-->', X2.shape, file=sys.stderr)
         if preprocess is not None:
             X2 = DataTool.preprocessX(X2, preprocess['method'], preprocess['params'])
+            print(X2)
         newXTrain = X2[0:XTrain.shape[0]]
         newXTest = X2[XTrain.shape[0]:]
         print('Train:', XTrain.shape, '->', newXTrain.shape, ' Test:', XTest.shape, '->', newXTest.shape, file=sys.stderr)

@@ -1,4 +1,12 @@
 
+## Topic Table
+Original New   Name 
+2              核四
+3         1    服貿
+4         2    自經
+5         3    美牛
+13        4    基薪
+
 ## for generating basic feature
 python3 BasicFeature.py ../data/taggedLabelNews_5T_Merged_long.json 2 docLen docLen
 python3 BasicFeature.py ../data/taggedLabelNews_5T_Merged_long.json 2 nUniqueWord nUniqueWord

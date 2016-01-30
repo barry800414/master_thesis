@@ -38,7 +38,7 @@ This folder contains all the core algorithms
 ## Feature clustering (using K-Means) in each train&test phase.
     python3 FM_KMeans.py pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle] [--preprocess -method xxx -param1 value1 ...]
 
-
+* wordVectorFile is in ./
 
 
 

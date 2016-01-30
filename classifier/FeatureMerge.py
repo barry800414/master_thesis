@@ -101,8 +101,8 @@ def getAdjList(dist, nFeatureOfVector, thresholdList, mapping, nFeature):
             index += 1
     return adjList, cnt
 
-# firstly divide features into groups, and calculate each feature
-# vectors by word vector. 
+# firstly divide features into groups, and calculate each feature vectors by word vector. 
+# return: 
 def getFeatureVectorsByGroup(volc, wordVector):
     # first divide feature into several groups
     groups = divideFeatureIntoGroup(volc)
@@ -115,6 +115,7 @@ def getFeatureVectorsByGroup(volc, wordVector):
         mapping = list() # mapping[i] is the original index if vectors[i]
         newVolc = Volc() # newVolc
         for i in idList:
+            # if feature vector cannot be calculated, it will return None
             vector = calcFeatureVector(i, volc, wordVector)
             if vector is not None:
                 vectors.append(vector)
@@ -241,7 +242,10 @@ def featureClustering(coef, volc, adjSet):
     model = genFeatureMergingModel(posClusters, negClusters, volc)
     return model
 
-
+# Divide features into groups -> KMeans clustering 
+# groupVectors: featureType -> featureVectors (matrix or np array?)
+# groupMapping?
+# groupSet 
 def featureClustering_KMeans_byGroup(groupVectors, groupMapping, nClusters, max_iter=300):
     finalClusters = list()
     oriDim = 0
@@ -329,6 +333,10 @@ def clusterFeatures(groupSet, adjSet):
         clusters.append([i])
     return clusters
 
+# clustering features by KMeans 
+# nClusters: if nClusters > 1 then nClusters is the number of cluster centers
+#   otherwise, nClusters is the pecentage of original feature number 
+# Why there is none vector? Because some of auxiliary vectors cannot be generated, words are not in the result from word2vec tool
 def clusterFeatures_KMeans(groupSet, vectors, oriMapping, nClusters, max_iter=100):
     nClusters = nClusters if nClusters > 1 else int(nClusters * len(groupSet))
 

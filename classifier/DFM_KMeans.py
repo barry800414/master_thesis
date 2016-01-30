@@ -1,6 +1,6 @@
 
 import sys, pickle
-from RunExp import RunExp, ResultPrinter
+from RunExp import RunExp, ResultPrinter, DataTool
 from FeatureMerge import *
 
 def parseArgument(argv, start):
@@ -41,7 +41,7 @@ def parseArgument(argv, start):
     return outLogPickle, fSelectConfig, preprocess
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3 :
+    if len(sys.argv) < 5 :
         print('Usage:', sys.argv[0], 'pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle]', file=sys.stderr)
         print('[--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]', file=sys.stderr)
         exit(-1)
@@ -62,7 +62,6 @@ if __name__ == '__main__':
     with open(pickleFile, 'r+b') as f:
         p = pickle.load(f)
     X, y, volc = p['X'], p['y'], p['mainVolc']
-    print(X.shape, file=sys.stderr)
     ResultPrinter.printFirstLine()
 
     # convert it to feature vectors
@@ -72,11 +71,9 @@ if __name__ == '__main__':
     model = featureClustering_KMeans_byGroup(groupVectors, groupMapping, nClusters, max_iter=300)
     newX = model.transform(X)
     print('X:', X.shape, ' -> newX:', newX.shape, file=sys.stderr)
-
     # preprocess if necessary        
     if preprocess is not None:
         newX = DataTool.preprocessX(newX, preprocess['method'], preprocess['params'])
-
     logList = list()
     for seed in range(1, seedNum+1):
         logs = RunExp.selfTrainTestNFold(newX, y, 'MaxEnt', 'Accuracy', 
