@@ -17,6 +17,10 @@ Todo:
       1. DFM & DFM_KMeans  
       2. FM & FM_KMeans
 
+    There should be 8 results:
+    1. Direct / InDirect
+    2. 
+
     * to ask Hou how to deploy tasks to other clusters
 
 3. Should investigate the sensitivity of threshold selection in community detection
