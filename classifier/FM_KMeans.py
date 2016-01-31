@@ -70,7 +70,6 @@ if __name__ == '__main__':
 
     logList = list()
     for seed in range(1, seedNum+1):
-        #FIXME: here is community detection?
         logs = RunExp.selfTrainTestNFoldWithFC(2, X, y, groupVectors, groupMapping, 
                 nClusters, 'MaxEnt', 'Accuracy', fSelectConfig=fSelectConfig, preprocess=preprocess, 
                 randSeed=seed, test_folds=10, cv_folds=10, n_jobs=2)

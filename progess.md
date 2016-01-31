@@ -20,16 +20,14 @@ Todo:
     There should be 10 results: 1.Direct / InDirect  2. Community / KMeans  3. single / Merged
     1. Direct Community Single (done)
     2. Direct Community Merge (done)
-    3. Direct KMeans Single (sent)
+    3. Direct KMeans Single (done)
     4. Direct KMeans Merge
     5. InDirect Community Single (done)
     6. InDirect Community Merge (done)
-    7. InDirect KMeans Single
+    7. InDirect KMeans Single (can try, it will be very slow)
     8. InDirect KMeans Merge
     9. Single 
     10. Merge  
-
-    * to ask Hou how to deploy tasks to other clusters
 
 3. Should investigate the sensitivity of threshold selection in community detection
     **see README.md in ./ResultAnalysis folder

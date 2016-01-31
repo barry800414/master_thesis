@@ -1,9 +1,13 @@
 
 import sys, pickle
 from FeatureMerge import *
-from RunWithFC_Multi import *
+from FM_Multi import *
 
-from RunExperiments import RunExp, ResultPrinter, DataTool
+from RunExp import RunExp, ResultPrinter, DataTool
+
+'''
+Filename 'Multi' means this module can accept different threshold for different group of features
+'''
 
 if __name__ == '__main__':
     if len(sys.argv) < 3 :

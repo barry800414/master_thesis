@@ -38,6 +38,9 @@ def parseArgument(argv, start):
         elif argv[i] == '-outLogPickle' and len(argv) > i:
             outLogPickle = argv[i+1]
 
+        elif argv[i] == '-nClusterFile' and len(argv) > i:
+            nClusterFile 
+
     return outLogPickle, fSelectConfig, preprocess
 
 if __name__ == '__main__':

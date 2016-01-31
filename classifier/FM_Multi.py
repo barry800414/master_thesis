@@ -1,8 +1,12 @@
 
 import sys, pickle
 from scipy.sparse import hstack
-from RunExperimentsWithFC import RunExp, ResultPrinter
+from RunExp_FM import RunExp, ResultPrinter
 from FeatureMerge import *
+
+'''
+Filename 'Multi' means this module can accept different threshold for different group of features
+'''
 
 def parseArgument(argv, start):
     fSelectConfig = None

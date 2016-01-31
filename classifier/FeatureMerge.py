@@ -242,11 +242,32 @@ def featureClustering(coef, volc, adjSet):
     model = genFeatureMergingModel(posClusters, negClusters, volc)
     return model
 
+# nClusters can be:
+#   integer: #centroid for each kind of features 
+#   float: percentage of centroid for each kind of features
+#   dict: feature type -> int or float
+def convertNClutser(fTypes, nClusters):
+    if type(nClusters) == int or type(nClusters) == float:
+        nc = { fType:nClusters for fType in fTypes}
+    elif type(nClusters) == dict:
+        intersect = set(fTypes) & set(nClusters.keys())
+        assert len(intersect) == len(fTypes) and len(intersect) == len(nClusters)
+        for fType, nc in nClusters.items():
+            assert type(nc) == int or type(nc) == float
+        nC = dict(nClusters)
+    else:
+        return None
+    return nC
+
 # Divide features into groups -> KMeans clustering 
 # groupVectors: featureType -> featureVectors (matrix or np array?)
 # groupMapping?
-# groupSet 
+# nClusters can be:
+#   integer: #centroid for each kind of features 
+#   float: percentage of centroid for each kind of features
+#   dict: feature type -> int or float
 def featureClustering_KMeans_byGroup(groupVectors, groupMapping, nClusters, max_iter=300):
+    
     finalClusters = list()
     oriDim = 0
     for fType, vectors in groupVectors.items():
