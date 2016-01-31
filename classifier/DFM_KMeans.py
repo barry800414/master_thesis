@@ -7,6 +7,7 @@ def parseArgument(argv, start):
     fSelectConfig = None
     outLogPickle = None
     preprocess = None
+    nClusters = None
     for i in range(start, len(argv)):
         if argv[i] == '--fSelect':
             fSelectConfig = { 'params': dict() }
@@ -39,13 +40,15 @@ def parseArgument(argv, start):
             outLogPickle = argv[i+1]
 
         elif argv[i] == '-nClusterFile' and len(argv) > i:
-            nClusterFile 
+            nClusterFile = argv[i+1]
+            with open(nClusterFile, 'r') as f:
+                nClusters = json.load(f)
 
-    return outLogPickle, fSelectConfig, preprocess
+    return outLogPickle, fSelectConfig, preprocess, nClusters
 
 if __name__ == '__main__':
     if len(sys.argv) < 5 :
-        print('Usage:', sys.argv[0], 'pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle]', file=sys.stderr)
+        print('Usage:', sys.argv[0], 'pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle] [-nClusterFile jsonFile]', file=sys.stderr)
         print('[--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]', file=sys.stderr)
         exit(-1)
     
@@ -53,10 +56,13 @@ if __name__ == '__main__':
     wordVectorFile = sys.argv[2]
     nClusters = float(sys.argv[3])
     seedNum = int(sys.argv[4])
-    outLogPickle, fSelectConfig, preprocess = parseArgument(sys.argv, 5)
+    outLogPickle, fSelectConfig, preprocess, nClustersTmp = parseArgument(sys.argv, 5)
+    if nClustersTmp is not None:
+        nClusters = nClustersTmp
     print('OutLogPickleFile:', outLogPickle, file=sys.stderr)
     print('fSelectConfig:', fSelectConfig, file=sys.stderr)
     print('preprocess:', preprocess, file=sys.stderr)
+    print('nClusters:', nClusters, file=sys.stderr)
 
     # read word vectors
     volc, vectors = readWordVector(wordVectorFile)

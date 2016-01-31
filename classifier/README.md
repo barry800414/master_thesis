@@ -20,14 +20,14 @@ This folder contains all the core algorithms
     --fSelect -method LinearSVM -C 1.0
     --fSelect -method RF
 
-## Feature clustering (using community detection) firstly, then normal training and testing (Direct Feature Clustering, DFC)
+## Direct Feature clustering (using community detection) firstly, then normal training and testing (Direct Feature Merging, DFM)
     python3 DFM.py pickleFile adjListFile seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]
     
 * pickleFile is in ../feature
 * adjListFile is in ./featureMerge
 
-## Feature clustering (using K-means) firstly, then normal training and testing (Direct Feature Clustering using Kmeans)
-    python3 DFM_KMeans.py pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]
+## Direct Feature clustering (using K-means) firstly, then normal training and testing (Direct Feature Merging using Kmeans)
+    python3 DFM_KMeans.py pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle] [-nClusterFile jsonFile] [--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]
 
 ## Feature clustering (using community detection) in each train&test phase. (Our proposed solution)
     python3 FM.py pickleFile adjListFile version seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]

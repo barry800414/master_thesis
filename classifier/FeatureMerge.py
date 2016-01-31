@@ -246,12 +246,11 @@ def featureClustering(coef, volc, adjSet):
 #   integer: #centroid for each kind of features 
 #   float: percentage of centroid for each kind of features
 #   dict: feature type -> int or float
-def convertNClutser(fTypes, nClusters):
+def convertNCluster(fTypes, nClusters):
     if type(nClusters) == int or type(nClusters) == float:
         nc = { fType:nClusters for fType in fTypes}
     elif type(nClusters) == dict:
-        intersect = set(fTypes) & set(nClusters.keys())
-        assert len(intersect) == len(fTypes) and len(intersect) == len(nClusters)
+        assert len(set(fTypes) - set(nClusters.keys())) == 0
         for fType, nc in nClusters.items():
             assert type(nc) == int or type(nc) == float
         nC = dict(nClusters)
@@ -267,13 +266,13 @@ def convertNClutser(fTypes, nClusters):
 #   float: percentage of centroid for each kind of features
 #   dict: feature type -> int or float
 def featureClustering_KMeans_byGroup(groupVectors, groupMapping, nClusters, max_iter=300):
-    
+    nC = convertNCluster(set(groupVectors.keys()), nClusters)
     finalClusters = list()
     oriDim = 0
     for fType, vectors in groupVectors.items():
         print('feature type:', fType, ' #features:', vectors.shape[0], file=sys.stderr)
         groupSet = set([i for i in range(0, len(vectors))])
-        clusters = clusterFeatures_KMeans(groupSet, vectors, groupMapping[fType], nClusters, max_iter)
+        clusters = clusterFeatures_KMeans(groupSet, vectors, groupMapping[fType], nC[fType], max_iter)
         finalClusters.extend(clusters)
         oriDim += len(vectors)
 
