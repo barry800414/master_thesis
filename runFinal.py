@@ -22,13 +22,13 @@ if ans != 'Y':
     print('exit', file=sys.stderr)
     exit(0)
 
-# BOW_tf: BOW
-# 2Word: Bi
-# 3Word: Tri
-# PT_SB: Dep_PP
-# Full_SB: Dep_Full (Full = full representation)
-# PT_TB: Dep_PPAll (all = TB tag based)
-# Full_TB: Dep_FullAll 
+# BOW_tf: BOW: Word
+# 2Word: Bi: BiWord
+# 3Word: Tri: TriWord
+# PT_SB: Dep_PP: H_P, T_P, H/T_P, H_N, T_N, H/T_N
+# Full_SB: Dep_Full (Full = full representation): OT, HO, HO/OT
+# PT_TB: Dep_PPAll (all = TB tag based): H_P, T_P, H/T_P, H_N, T_N, H/T_N
+# Full_TB: Dep_FullAll: OT, HO, HO/OT
 
 wvFile = './classifier/news7852Final.vector'
 #rDir = './featureMerge'
@@ -56,38 +56,33 @@ for t in [3, 4, 5, 13]:
             #    exit()
         
             cmd = 'python3 CollectResult.py %s/%s.csv >> %s' % (rDir, task, resultFile)
-            print(cmd)
-            os.system(cmd)
-        os.system('echo "" >> %s' % (resultFile))
+            #print(cmd)
+            #os.system(cmd)
+        #os.system('echo "" >> %s' % (resultFile))
 
 ### run direct feature merging (using KMeans) for merged feature ###
-thresholdDict = {
-    3: { 'BOW_tf': 0.60, '2Word': 0.63, '3Word': 0.60, 'Dep_PPAll': 0.73, 'Dep_FullAll': 0.44 },
-    4: { 'BOW_tf': 0.47, '2Word': 0.32, '3Word': 0.27, 'Dep_PPAll': 0.48, 'Dep_FullAll': 0.32 },
-    5: { 'BOW_tf': 0.63, '2Word': 0.41, '3Word': 0.29, 'Dep_PPAll': 0.61, 'Dep_FullAll': 0.36 },
-    13: { 'BOW_tf': 0.32, '2Word': 0.52, '3Word': 0.56, 'Dep_PPAll': 0.50, 'Dep_FullAll': 0.60 }
+nCEachTopic = {    
+    3: { "Word": 0.60, "BiWord": 0.63, "TriWord": 0.60, "H/T_N": 0.73, "H/T_P": 0.73, "HO/OT": 0.44 },
+    4: { "Word": 0.47, "BiWord": 0.32, "TriWord": 0.27, "H/T_N": 0.48, "H/T_P": 0.48, "HO/OT": 0.32 },
+    5: { "Word": 0.63, "BiWord": 0.41, "TriWord": 0.29, "H/T_N": 0.61, "H/T_P": 0.61, "HO/OT": 0.36 },
+    13: { "Word": 0.32, "BiWord": 0.52, "TriWord": 0.56, "H/T_N": 0.50, "H/T_P": 0.50, "HO/OT": 0.60 }
 }
 
 preprocess = 'minmax'
 resultFile = 'Merge_DFM_KMeans_20160131.csv'
+rDir2 = 'merge_DFM_result'
 for t in [3, 4, 5, 13]:
+    fFile = './feature/merge2_noPOS/t%d_merge2_noPOS_df2.pickle' % (t)
     for tDiff in range(-10, 11, 1):
         task = 't%d_merge_%s_Diff%g' % (t, preprocess, tDiff)
-        logFile = '%s/%s.pickle' % (rDir2, task)
+        #logFile = '%s/%s.pickle' % (rDir2, task)
         rFile = '%s/%s.csv' % (rDir2, task)
-        cmd = 'cd %s; python3 RunWithFC_Multi.py %d --inFile' % (libDir, seedNum)
-        for f in ['BOW_tf', '2Word', '3Word', 'Dep_PPAll', 'Dep_FullAll']:
-            threshold = thresholdDict[t][f] + float(tDiff) / 100
-            data = 't%d_%s_df2' % (t, f)
-            pFile = '%s/%s/%s.pickle' % (fDir, f, data)
-            adjFile = '%s/%s_T%g.adjList' % (rDir, data, threshold)
-            cmd += ' %s %s' % (pFile, adjFile)
+        cmd = 'python3 ./classifier/DFM_KMeans.py %s %s 1 3 --nCluster' % (fFile, wvFile)
 
-        if preprocess == 'minmax':
-            cmd += ' -outLogPickle %s --preprocess -method minmax > %s' % (logFile, rFile) 
-        else:
-            cmd += ' -outLogPickle %s > %s' % (logFile, rFile)
-        #print(cmd)
+        for fType, nC in nCEachTopic[t].items():
+            cmd += ' %s %f' % (fType, nC + tDiff / 100.0 )
+        cmd += ' --preprocess -method minmax > %s' % (rFile) 
+        print(cmd)
         #sender.putTask(cmd)
             
         #cmd = 'python3 CollectResult.py %s/%s >> %s' % (libDir, rFile, resultFile)

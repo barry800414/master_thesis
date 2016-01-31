@@ -20,3 +20,16 @@ This folder contains all the necessary files of my master thesis.
 * Re-organize the data into excel friendly format, plot the figures if needed
     python3 PlotThresholdTest.py csv [FigureOutputFolder]
 
+## useful information
+### Feature Type Name mapping
+    thesis  : file       : fType in codes
+    BOW_tf  : BOW        : Word
+    2Word   : Bi         : BiWord
+    3Word   : Tri        : TriWord
+    PT_SB   : Dep_PP     : H_P, T_P, H/T_P, H_N, T_N, H/T_N
+    Full_SB : Dep_Full   : OT, HO, HO/OT
+    PT_TB   : Dep_PPAll  : H_P, T_P, H/T_P, H_N, T_N, H/T_N
+    Full_TB : Dep_FullAll: OT, HO, HO/OT
+
+    *(Full = full representation)
+    *(all = TB tag based)

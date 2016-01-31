@@ -7,12 +7,12 @@ def parseArgument(argv, start):
     fSelectConfig = None
     outLogPickle = None
     preprocess = None
-    nClusters = None
+    nClusterDict = None
     for i in range(start, len(argv)):
         if argv[i] == '--fSelect':
             fSelectConfig = { 'params': dict() }
             for j in range(i+1, len(argv)):
-                if argv[j] in ['-outLogPickle', '--preprocess']:
+                if argv[j] in ['-outLogPickle', '--preprocess', '--nCluster']:
                     break
                 elif argv[j] == '-method' and len(argv) > i:
                     fSelectConfig['method'] = argv[j+1]
@@ -25,7 +25,7 @@ def parseArgument(argv, start):
         elif argv[i] == '--preprocess':
             preprocess = { 'params': dict() }
             for j in range(i+1, len(argv)):
-                if argv[j] in ['-outLogPickle', '--fSelect']:
+                if argv[j] in ['-outLogPickle', '--fSelect', '--nCluster']:
                     break
                 elif argv[j] == '-method' and len(argv) > i:
                     preprocess['method'] = argv[j+1]
@@ -36,33 +36,37 @@ def parseArgument(argv, start):
                         except: value = argv[j+1]
                     preprocess['params'][argv[j][1:]] = value
 
+        elif argv[i] == '--nCluster':
+            nClusterDict = dict()
+            for j in range(i+1, len(argv), 2):
+                if argv[j] in ['-outLogPickle', '--preprocess', '--fSelect']:
+                    break
+                else:
+                    nClusterDict[argv[j]] = float(argv[j+1])
         elif argv[i] == '-outLogPickle' and len(argv) > i:
             outLogPickle = argv[i+1]
 
-        elif argv[i] == '-nClusterFile' and len(argv) > i:
-            nClusterFile = argv[i+1]
-            with open(nClusterFile, 'r') as f:
-                nClusters = json.load(f)
-
-    return outLogPickle, fSelectConfig, preprocess, nClusters
+    return outLogPickle, fSelectConfig, preprocess, nClusterDict
 
 if __name__ == '__main__':
     if len(sys.argv) < 5 :
-        print('Usage:', sys.argv[0], 'pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle] [-nClusterFile jsonFile]', file=sys.stderr)
-        print('[--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]', file=sys.stderr)
+        print('Usage:', sys.argv[0], 'pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle]', file=sys.stderr)
+        print('[--nCluster group1 nCluster1 group2 nCluster2 ...] ', file=sys.stderr)
+        print('[--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...] ', file=sys.stderr)
         exit(-1)
     
     pickleFile = sys.argv[1]
     wordVectorFile = sys.argv[2]
     nClusters = float(sys.argv[3])
     seedNum = int(sys.argv[4])
-    outLogPickle, fSelectConfig, preprocess, nClustersTmp = parseArgument(sys.argv, 5)
-    if nClustersTmp is not None:
-        nClusters = nClustersTmp
+    outLogPickle, fSelectConfig, preprocess, nClusterDict = parseArgument(sys.argv, 5)
+    if nClusterDict is None:
+        nClusterDict = nClusters
+
     print('OutLogPickleFile:', outLogPickle, file=sys.stderr)
     print('fSelectConfig:', fSelectConfig, file=sys.stderr)
     print('preprocess:', preprocess, file=sys.stderr)
-    print('nClusters:', nClusters, file=sys.stderr)
+    print('nClusterDict:', nClusterDict, file=sys.stderr)
 
     # read word vectors
     volc, vectors = readWordVector(wordVectorFile)
@@ -77,7 +81,7 @@ if __name__ == '__main__':
     groupVectors, groupVolc, groupMapping = getFeatureVectorsByGroup(volc, wordVector)
     
     # feature merging using Kmeans
-    model = featureClustering_KMeans_byGroup(groupVectors, groupMapping, nClusters, max_iter=100)
+    model = featureClustering_KMeans_byGroup(groupVectors, groupMapping, nClusterDict, max_iter=100)
     newX = model.transform(X)
     print('X:', X.shape, ' -> newX:', newX.shape, file=sys.stderr)
     # preprocess if necessary        
