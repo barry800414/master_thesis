@@ -21,20 +21,22 @@ Todo:
     1. Direct Community Single (done)
     2. Direct Community Merge (done)
     3. Direct KMeans Single (done)
-    4. Direct KMeans Merge
+    4. Direct KMeans Merge (done)
     5. InDirect Community Single (done)
     6. InDirect Community Merge (done)
-    7. InDirect KMeans Single (can try, it will be very slow)
+    7. InDirect KMeans Single (can try, it will be very slow, running)
     8. InDirect KMeans Merge
     9. Single 
     10. Merge  
+
+    TODO: compare results
 
 3. Should investigate the sensitivity of threshold selection in community detection
     **see README.md in ./ResultAnalysis folder
     Should run:
       1. PlotThreshold.py: convert data to excel friendly format
       2. ResultStat.py: calculating statistics about the result
-    
+
 4. Should inverstigate the physical meaning when merging features
     to do: model (how features are clustered and merged has been dumped), now is to analyze it 
     Should run: ./ResultAnalysis/PrintFeatureCluster.py 
@@ -42,9 +44,15 @@ Todo:
 5. Should explain why Community detection can win K-Means ?
     Actually K-Means is too slow (to explain), try other faster clustering algorithm 
     TODO: 
-        1.find faster clustering algorithm 
-        2.to explain K-Means is too slow
+        1.find faster clustering algorithm & explain Kmeans is too slow
+            time complexity of KMeans: O(knT)
+            other time complexity: 
+            Lourvain method: ?
 
 6.  TODO: to find the list of "opinion operator", there are 3 papers to check
 
-7.  
+7.  Divide (+1/-1) into 2 groups, instead of multiply it by -1
+    TODO: modify the codes for calculating auxiliary vectors (for Dependency features), and the way to divide groups
+
+
+

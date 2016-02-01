@@ -15,7 +15,7 @@ class SendJob:
     def putTask(self, cmd):
         self.queue.put(cmd)
 
-#sender = SendJob()
+sender = SendJob()
 
 ans = input("Sure to run ? (Y/N)")
 if ans != 'Y':
@@ -70,7 +70,7 @@ nCEachTopic = {
 
 preprocess = 'minmax'
 resultFile = 'Merge_DFM_KMeans_20160131.csv'
-rDir2 = 'merge_DFM_result'
+rDir2 = 'merge_DFM_KMeans_result'
 for t in [3, 4, 5, 13]:
     fFile = './feature/merge2_noPOS/t%d_merge2_noPOS_df2.pickle' % (t)
     for tDiff in range(-10, 11, 1):
@@ -82,14 +82,38 @@ for t in [3, 4, 5, 13]:
         for fType, nC in nCEachTopic[t].items():
             cmd += ' %s %f' % (fType, nC + tDiff / 100.0 )
         cmd += ' --preprocess -method minmax > %s' % (rFile) 
-        print(cmd)
+        #print(cmd)
         #sender.putTask(cmd)
             
-        #cmd = 'python3 CollectResult.py %s/%s >> %s' % (libDir, rFile, resultFile)
+        cmd = 'python3 CollectResult.py %s >> %s' % (rFile, resultFile)
         #print(cmd)
         #os.system(cmd)
     #os.system('echo "" >> %s' % (resultFile))
 
+
+
+### run Feature merging (using KMeans) for single feature
+resultFile = 'Single_FM_KMeans_20160201.csv'
+rDir = './single_FM_KMeans'
+cnt = 0
+
+for t in [3, 4, 5, 13]:
+    for f in ['BOW_tf', '2Word', '3Word', 'Dep_PP', 'Dep_Full', 'Dep_PPAll', 'Dep_FullAll']: 
+        for nClusters in [i * 0.01 for i in range(25, 76)]:
+            data = 't%d_%s_df2' % (t, f)
+            task = '%s_c%.2f_minmax' % (data, nClusters)
+            cmd = 'python3 ./classifier/FM_KMeans.py ./feature/%s/%s.pickle %s %f 3 --preprocess -method minmax > %s/%s.csv' % (f, data, wvFile, nClusters, rDir, task)
+
+            print(cmd)
+            cnt = cnt +1
+            sender.putTask(cmd)
+            if cnt >= 10:
+                exit()
+        
+            cmd = 'python3 CollectResult.py %s/%s.csv >> %s' % (rDir, task, resultFile)
+            #print(cmd)
+            #os.system(cmd)
+        #os.system('echo "" >> %s' % (resultFile))
 
 
 '''
