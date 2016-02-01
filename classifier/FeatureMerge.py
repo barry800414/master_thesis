@@ -22,7 +22,9 @@ class FeatureMergingModel():
     def toDim(self):
         return self.proj.shape[1]
 
-
+'''
+The following functions are for generating feature-to-feature graph by calculating pairwise cosine similarity
+'''
 # given feature vectors, calculating pair-wise cosine similarity
 # and filter out the edges whose sim < threshold
 # adjList: adjacency list
@@ -87,7 +89,6 @@ def getAdjListList(dist, nFeatureOfVector, thresholdList, mapping, nFeature):
             index += 1
     return adjListList, cntList
 
-
 def getAdjList(dist, nFeatureOfVector, thresholdList, mapping, nFeature):
     adjList = [list() for i in range(0, nFeature)]
     index = 0
@@ -101,9 +102,12 @@ def getAdjList(dist, nFeatureOfVector, thresholdList, mapping, nFeature):
             index += 1
     return adjList, cnt
 
+'''
+The following functions are for generating auxiliary vectors
+'''
 # firstly divide features into groups, and calculate each feature vectors by word vector. 
 # return: 
-def getFeatureVectorsByGroup(volc, wordVector):
+def getFeatureVectorsByGroup(volc, wordVector, version):
     # first divide feature into several groups
     groups = divideFeatureIntoGroup(volc)
     print(groups.keys(), file=sys.stderr)
@@ -116,7 +120,8 @@ def getFeatureVectorsByGroup(volc, wordVector):
         newVolc = Volc() # newVolc
         for i in idList:
             # if feature vector cannot be calculated, it will return None
-            vector = calcFeatureVector(i, volc, wordVector)
+            word = volc.getWord(i)
+            vector = calcFeatureVector(word, wordVector, version)
             if vector is not None:
                 vectors.append(vector)
                 newVolc.addWord(volc.getWord(i))
@@ -134,25 +139,27 @@ def divideFeatureIntoGroup(volc):
     groups = dict()
     for i in range(0, len(volc)):
         v = volc.getWord(i)
-        fType = checkType(v)
+        fType = (v)
         if fType not in groups:
             groups[fType] = list()
         groups[fType].append(i)
     return groups
 
 # get all feature vectors
-def getFeatureVectors(volc, wordVector):
+def getFeatureVectors(volc, wordVector, version):
     vectors = list() # feature vectors
     mapping = list() # mapping[i] is the original index if vectors[i]
     newVolc = Volc() # newVolc
     for i in range(0, len(volc)):
-        vector = calcFeatureVector(i, volc, wordVector)
+        word = volc.getWord(i)
+        vector = AuxiliaryVectorHelper.calcFeatureVector(word, wordVector, version)
         if vector is not None:
             vectors.append(vector)
             newVolc.addWord(volc.getWord(i))
             mapping.append(i)
     return np.array(vectors), newVolc, mapping
 
+''' Depricated on 2016/2/1
 # calculate one feature vector
 def calcFeatureVector(index, volc, wordVector):
     v = volc.getWord(index) # volcabulary 
@@ -189,7 +196,7 @@ def calcFeatureVector(index, volc, wordVector):
             else: 
                 vector += wordVector[vi]
     return vector
-
+'''
 
 def __getSign(string):
     if string.find('sign') == -1:
@@ -197,6 +204,129 @@ def __getSign(string):
     else:
         return int(string[string.find('sign')+4:])
 
+
+
+''' 
+         version 1    version 2
+Word      Word         Word
+BiWord    BiWord       BiWord
+TriWord   TriWord      TriWord
+T & 0     H/T_N        H/T_0
+T & 1     H/T_P        H/T_P
+T &-1     H/T_P        H/T_N
+H & 0     H/T_N        H/T_0
+H & 1     H/T_P        H/T_P
+H &-1     H/T_P        H/T_N
+HO& 1     HO/OT        HO/OT_P
+HO&-1     HO/OT        HO/OT_N
+OT& 1     HO/OT        HO/OT_P
+OT&-1     HO/OT        HO/OT_P
+HOT         X            X
+          P=polarity   P=Positive
+          N=neutral    N=Negative
+                       0=Neutral
+In version 1, positive and negative are put in same group, feature vector is multiplied by -1
+In version 2, positive and negative are put in different groups, feature vector is the same
+Date: 2016/2/1
+'''
+class AuxiliaryVectorHelper:
+    def calcFeatureVector(word, wordVector, version):
+        if word is None:
+            return None
+
+        fType = self.getFeatureType(word) # feature type
+        vector = None
+
+        # for word-based features, we don't need to consider version
+        if fType in ['Word', 'BiWord', 'TriWord']: 
+            if fType == 'Word':
+                vector = np.array(wordVector[v]) if v in wordVector else vector
+            else:
+                for vi in v:
+                    if vi not in wordVector: 
+                        continue
+                    if vector is None: 
+                        vector = np.array(wordVector[vi])
+                    else: 
+                        vector += wordVector[vi]
+
+        # for dependency features, we have to consider version
+        else:             
+            if version == 1:
+                if fType in ['H_P', 'T_P', 'H/T_P']: 
+                    assert len(v) == 3
+                    sign = __getSign(v[2])
+                    vector = sign * wordVector[v[1]] if v[1] in wordVector else vector           
+                elif fType in ['H_N', 'T_N', 'H/T_N']:
+                    vector = wordVector[v[1]] if v[1] in wordVector else vector
+                elif fType in ['OT', 'HO', 'HO/OT']:
+                    sign = __getSign(v[2])
+                    for i in [1, 3]:
+                        if v[i] not in wordVector: continue
+                        if vector is None: 
+                            vector = np.array(wordVector[v[i]])
+                        else:
+                            vector += wordVector[v[i]]
+                    if vector is not None: vector = vector * sign
+            elif version == 2:
+                if fType in ['H/T_P', 'H/T_N', 'H/T_0']:
+                    vector = wordVector[v[1]] if v[1] in wordVector else vector
+                elif fType in ['HO/OT_P', 'HO/OT_N']:
+                    for i in [1, 3]:
+                        if v[i] not in wordVector: continue
+                        if vector is None: 
+                            vector = np.array(wordVector[v[i]])
+                        else:
+                            vector += wordVector[v[i]]
+
+        return vector
+
+    # According to feature form, get the feature type. There are 2 versions. 
+    def getFeatureType(self, word, version):
+        if version == 1:
+            if type(v) == str:
+                return 'Word'
+            elif type(v) == tuple:
+                if v[0] in ['T', 'H'] and len(v) >= 3 and __getSign(v[2]) is not None:
+                    sign = __getSign(v[2])
+                    if sign == 0: return 'H/T_N'
+                    else: return 'H/T_P'
+                elif v[0] in ['OT', 'HO']: #not support HT HOT
+                    return 'HO/OT'
+                elif len(v) == 2:
+                    return 'BiWord'
+                elif len(v) == 3:
+                    return 'TriWord'
+            else:
+                return None
+        elif version == 2:
+            if type(v) == str:
+                return 'Word'
+            elif type(v) == tuple:
+                if v[0] in ['T', 'H'] and len(v) >= 3 and __getSign(v[2]) is not None:
+                    sign = __getSign(v[2])
+                    if sign == 0: 
+                        return v[0] + '_0'
+                    elif sign == 1: 
+                        return v[0] + '_P'
+                    else:
+                        return v[0] + '_N'
+                elif v[0] in ['OT', 'HO']: #not support HT HOT
+                    sign = __getSign(v[2])
+                    if sign == 1:
+                        return 'HO/OT_P'
+                    elif sign == -1:
+                        return 'HO/OT_N'
+                elif len(v) == 2:
+                    return 'BiWord'
+                elif len(v) == 3:
+                    return 'TriWord'
+            else:
+                return None
+
+
+
+''' Depricated on 2016/2/1
 # T_N: target & sign = 0
 # H_N: holder & sign = 0
 # T_P: target & sign = +1/-1
@@ -204,7 +334,7 @@ def __getSign(string):
 # H/T_N: holder or target & sign = 0
 # H/T_P: holder or target & sign = +1/-1
 typeMappingV1 = { 'T_N': 'H/T_N', 'H_N':'H/T_N', 'T_P':'H/T_P', 'H_P':'H/T_P',  'OT': 'HO/OT', 'HO': 'HO/OT' }
-typeMappingV2 = { 'T_N': 'T_N', 'H_N':'H_N', 'T_P':'T_P', 'H_P':'H_P',  'OT': 'OT', 'HO': 'HO' }
+#typeMappingV2 = { 'T_N': 'T_N', 'H_N':'H_N', 'T_P':'T_P', 'H_P':'H_P',  'OT': 'OT', 'HO': 'HO' }
 typeMapping = typeMappingV1
 
 def checkType(v):
@@ -232,7 +362,11 @@ def setType(version):
         typeMapping = typeMappingV1
     elif version == 2:
         typeMapping = typeMappingV2
+'''
 
+'''
+The following functions are for clustering features (community detection or KMeans)
+'''
 # given coefficient(weight) of classifier and feature adjacency list
 # generate projection model for mergin features
 def featureClustering(coef, volc, adjSet):
@@ -248,7 +382,7 @@ def featureClustering(coef, volc, adjSet):
 #   dict: feature type -> int or float
 def convertNCluster(fTypes, nClusters):
     if type(nClusters) == int or type(nClusters) == float:
-        nc = { fType:nClusters for fType in fTypes}
+        nC = { fType:nClusters for fType in fTypes}
     elif type(nClusters) == dict:
         assert len(set(fTypes) - set(nClusters.keys())) == 0
         for fType, nc in nClusters.items():
@@ -283,7 +417,8 @@ def featureClustering_KMeans_byGroup(groupVectors, groupMapping, nClusters, max_
 
 def featureClustering_KMeans_byGroup_TwoSide(coef, groupVectors, groupMapping, nClusters, max_iter=100):
     posSet, negSet = dividePosNegSet(coef)
-
+    
+    nC = convertNCluster(set(groupVectors.keys()), nClusters)
     finalClusters = list()
     oriDim = 0
     for fType, vectors in groupVectors.items():
@@ -301,14 +436,13 @@ def featureClustering_KMeans_byGroup_TwoSide(coef, groupVectors, groupMapping, n
         pNum = len(gPosSet)
         nNum = len(gNegSet)
         
-        n1 = int(nClusters[fType] * float(pNum) / (pNum + nNum))
-        n2 = int(nClusters[fType] * float(nNum) / (pNum + nNum))
-        n1 = n1 if n1 > 1 else 2
-        n2 = n2 if n2 > 1 else 2
-        clusters = clusterFeatures_KMeans(gPosSet, vectors, groupMapping[fType], n1, max_iter)
+        nC1 = nC[fType] * float(pNum) / (pNum + nNum)
+        nC2 = nC[fType] * float(nNum) / (pNum + nNum)
+        print(nC1, nC2, file=sys.stderr)
+        clusters = clusterFeatures_KMeans(gPosSet, vectors, groupMapping[fType], nC1, max_iter)
         finalClusters.extend(clusters)
 
-        clusters = clusterFeatures_KMeans(gNegSet, vectors, groupMapping[fType], n2, max_iter)
+        clusters = clusterFeatures_KMeans(gNegSet, vectors, groupMapping[fType], nC2, max_iter)
         finalClusters.extend(clusters)
     
     checkClusters(finalClusters)
@@ -356,9 +490,11 @@ def clusterFeatures(groupSet, adjSet):
 # clustering features by KMeans 
 # nClusters: if nClusters > 1 then nClusters is the number of cluster centers
 #   otherwise, nClusters is the pecentage of original feature number 
+#   when the number is too small, at least set to 1 
 # Why there is none vector? Because some of auxiliary vectors cannot be generated, words are not in the result from word2vec tool
 def clusterFeatures_KMeans(groupSet, vectors, oriMapping, nClusters, max_iter=100):
     nClusters = nClusters if nClusters > 1 else int(nClusters * len(groupSet))
+    nClusters = nClusters if nClusters > 1 else 1
 
     X = list()
     remainSet = set()
@@ -436,10 +572,6 @@ if __name__ == '__main__':
     for i in range(5, len(sys.argv)):
         thresholdList.append(float(sys.argv[i]))
 
-    # set version 
-    setType(version)
-    print('typeMapping:', typeMapping, file=sys.stderr)
-
     # read word vectors
     volc, vectors = readWordVector(wordVectorFile)
     wordVector = toDictType(volc, vectors)
@@ -450,7 +582,7 @@ if __name__ == '__main__':
     volc = p['mainVolc']
     print('# feature:', len(volc), file=sys.stderr)
 
-    groupVectors, groupVolc, groupMapping = getFeatureVectorsByGroup(volc, wordVector)
+    groupVectors, groupVolc, groupMapping = getFeatureVectorsByGroup(volc, wordVector, version)
     adjListList = calcSimAndFilterAdjListByGroup(groupVectors, groupMapping, thresholdList, len(volc))
     
     for i, adjList in enumerate(adjListList):

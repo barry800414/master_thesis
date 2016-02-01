@@ -49,16 +49,17 @@ def parseArgument(argv, start):
     return outLogPickle, fSelectConfig, preprocess, nClusterDict
 
 if __name__ == '__main__':
-    if len(sys.argv) < 5 :
-        print('Usage:', sys.argv[0], 'pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle]', file=sys.stderr)
+    if len(sys.argv) < 6 :
+        print('Usage:', sys.argv[0], 'pickleFile wordVectorFile FeatureGroupVersion nClusters seedNum [-outLogPickle LogPickle]', file=sys.stderr)
         print('[--nCluster group1 nCluster1 group2 nCluster2 ...] ', file=sys.stderr)
         print('[--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...] ', file=sys.stderr)
         exit(-1)
     
     pickleFile = sys.argv[1]
     wordVectorFile = sys.argv[2]
-    nClusters = float(sys.argv[3])
-    seedNum = int(sys.argv[4])
+    featureGroupVersion = int(sys.argv[3])
+    nClusters = float(sys.argv[4])
+    seedNum = int(sys.argv[5])
     outLogPickle, fSelectConfig, preprocess, nClusterDict = parseArgument(sys.argv, 5)
     if nClusterDict is None:
         nClusterDict = nClusters
@@ -78,7 +79,7 @@ if __name__ == '__main__':
     ResultPrinter.printFirstLine()
 
     # convert it to feature vectors
-    groupVectors, groupVolc, groupMapping = getFeatureVectorsByGroup(volc, wordVector)
+    groupVectors, groupVolc, groupMapping = getFeatureVectorsByGroup(volc, wordVector, featureGroupVersion)
     
     # feature merging using Kmeans
     model = featureClustering_KMeans_byGroup(groupVectors, groupMapping, nClusterDict, max_iter=100)

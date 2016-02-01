@@ -12,6 +12,29 @@ This folder contains all the core algorithms
 * ../feature/: Features pickle file 
 * ./featureMerge: all the adjacency list files 
 
+### Important information
+         version 1    version 2
+    Word      Word         Word
+    BiWord    BiWord       BiWord
+    TriWord   TriWord      TriWord
+    T & 0     H/T_N        H/T_0
+    T & 1     H/T_P        H/T_P
+    T &-1     H/T_P        H/T_N
+    H & 0     H/T_N        H/T_0
+    H & 1     H/T_P        H/T_P
+    H &-1     H/T_P        H/T_N
+    HO& 1     HO/OT        HO/OT_P
+    HO&-1     HO/OT        HO/OT_N
+    OT& 1     HO/OT        HO/OT_P
+    OT&-1     HO/OT        HO/OT_P
+    HOT         X            X
+              P=polarity   P=Positive
+              N=neutral    N=Negative
+                           0=Neutral
+    In version 1, positive and negative are put in same group, feature vector is multiplied by -1
+    In version 2, positive and negative are put in different groups, feature vector is the same
+    Date: 2016/2/1
+
 ## Normal training and testing (baseline)
     python3 Run.py pickleFile seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 -param2 value2]
     --fSelect -method chi -top 10

@@ -41,15 +41,16 @@ def parseArgument(argv, start):
     return outLogPickle, fSelectConfig, preprocess
 
 if __name__ == '__main__':
-    if len(sys.argv) < 5 :
-        print('Usage:', sys.argv[0], 'pickleFile wordVectorFile(word2vec text) nClusters seedNum [-outLogPickle LogPickle]', file=sys.stderr)
+    if len(sys.argv) < 6 :
+        print('Usage:', sys.argv[0], 'pickleFile wordVectorFile(word2vec text) featureGroupVersion nClusters seedNum [-outLogPickle LogPickle]', file=sys.stderr)
         print('[--preprocess -method xxx -param1 value1 ...]', file=sys.stderr)
         exit(-1)
     
     pickleFile = sys.argv[1]
     wordVectorFile = sys.argv[2]
-    nClusters = float(sys.argv[3])
-    seedNum = int(sys.argv[4])
+    featureGroupVersion = sys.argv[3]
+    nClusters = float(sys.argv[4])
+    seedNum = int(sys.argv[5])
 
     outLogPickle, fSelectConfig, preprocess = parseArgument(sys.argv, 5)
     print('OutLogPickleFile:', outLogPickle, file=sys.stderr)
@@ -66,7 +67,7 @@ if __name__ == '__main__':
     ResultPrinter.printFirstLine()
 
     # get all feature vectors 
-    groupVectors, groupVolc, groupMapping = getFeatureVectorsByGroup(volc, wordVector)
+    groupVectors, groupVolc, groupMapping = getFeatureVectorsByGroup(volc, wordVector, featureGroupVersion)
 
     logList = list()
     for seed in range(1, seedNum+1):
