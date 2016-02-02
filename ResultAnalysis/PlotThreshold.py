@@ -31,47 +31,48 @@ def filterRows(rows, colIndex, keyword):
     return newRows
 
 # extract threshold information from file name
-def extractThreshold(string):
-    r = re.search(".*_T(.+)_.*", string)
+def extractThreshold(string, keyword='T'):
+    r = re.search(".*_%s(.+)_.*" % (keyword), string)
     if r is None:
         return None
     else:
         return float(r.group(1))
 
 #FIXME: may have problems
-def extractTaskName(string):
+def extractTaskName(string, keyword='T'):
     p1 = string.rfind('/')
     s1 = string[p1+1:]
-    s2 = re.sub("_T.+?_result.csv", '', s1)
+    s2 = re.sub("_%s.+?_result.csv" % (keyword), '', s1)
     return s2
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print('Usage:', sys.argv[0], 'csv [FiguresOutputFolder]', file=sys.stderr)
+    if len(sys.argv) < 3:
+        print('Usage:', sys.argv[0], 'csv keyword [FiguresOutputFolder]', file=sys.stderr)
         exit(-1)
 
     rowsList = readCSV(sys.argv[1])
-    
+    keyword = sys.argv[2]
+
     # reorganize the data, #FIXME:assume all data has same threshold ranges
     print('TaskName', end='')
     for row in rowsList[0]:
-        t = extractThreshold(row[0])
+        t = extractThreshold(row[0], keyword)
         print(', %f' % t, end='')
     print('')
     for rows in rowsList:
-        taskName = extractTaskName(rows[0][0])
+        taskName = extractTaskName(rows[0][0], keyword)
         print(taskName, end='')
         for row in rows:
             print(', %f' % row[4], end='')
         print('')
 
-    if len(sys.argv) == 3:
+    if len(sys.argv) == 4:
         folder = sys.argv[2]
         for rows in rowsList:
-            tList = [extractThreshold(row[0]) for row in rows]
+            tList = [extractThreshold(row[0], keyword) for row in rows]
             testList = [row[4] for row in rows]
             plt.plot(tList, testList)
-            taskName = extractTaskName(rows[0][0])
+            taskName = extractTaskName(rows[0][0], keyword)
             plt.title(taskName)
             plt.ylabel('Testing scores')
             plt.xlabel('Threshold of similarity to build edges')
