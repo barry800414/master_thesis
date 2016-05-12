@@ -15,7 +15,7 @@ class SendJob:
     def putTask(self, cmd):
         self.queue.put(cmd)
 
-sender = SendJob()
+#sender = SendJob()
 
 ans = input("Sure to run ? (Y/N)")
 if ans != 'Y':
@@ -36,6 +36,7 @@ wvFile = './classifier/news7852Final.vector'
 seedNum = 3
 v = 2
 
+'''
 ### run direct feature merging (using KMeans) for single feature
 resultFile = 'Single_DFM_Kmeans_20160130.csv'
 rDir = './tmp_result'
@@ -115,24 +116,27 @@ for t in [3, 4, 5, 13]:
             #os.system(cmd)
         #os.system('echo "" >> %s' % (resultFile))
 
-
 '''
+
 ### run feature merging (using community detection) for single feature ###
-resultFile = 'single_FM_20150806.csv'
+fDir = '../feature'
+adjFileDir = './featureMerge'
+libDir = './classifier'
+resultFile = 'single_FM_20160205.csv'
 preprocess = 'minmax'
-v = 2
-rDir2 = './merged_FM_result_v%d' % (v) 
+v = 1
+rDir2 = '../merge_FM_v%d_result' % (v) 
 for t in [3, 4, 5, 13]:
-    for f in ['BOW_tf', '2Word', '3Word', 'Dep_PP', 'Dep_Full', 'Dep_PPAll', 'Dep_FullAll']:
+    for f in ['BOW_tf', '2Word', '3Word', 'Dep_PPAll', 'Dep_FullAll']:
         for t2 in range(25, 76, 1):
             threshold = float(t2) / 100
             data = 't%d_%s_df2' % (t, f)
             task = '%s_%s_T%g' % (data, preprocess, threshold)
             pFile = '%s/%s/%s.pickle' % (fDir, f, data)
-            adjFile = '%s/%s_T%g.adjList' % (rDir, data, threshold)
+            adjFile = '%s/%s_T%g.adjList' % (adjFileDir, data, threshold)
             logFile = '%s/%s_log.pickle' % (rDir2, task)
             rFile = '%s/%s_result.csv' % (rDir2, task)
-            cmd = 'cd %s; python3 RunWithFC.py %s %s %d %d -outLogPickle %s' % (libDir, pFile, adjFile, v, seedNum, logFile)
+            cmd = 'cd %s; python3 FM.py %s %s %d %d' % (libDir, pFile, adjFile, v, seedNum)
             if preprocess == 'minmax':
                 cmd += ' --preprocess -method minmax > %s' % (rFile) 
             else:
@@ -141,13 +145,13 @@ for t in [3, 4, 5, 13]:
             #print(cmd)
             #sender.putTask(cmd)
             
-            #cmd = 'python3 CollectResult.py %s/%s >> %s' % (libDir, rFile, resultFile)
-            #print(cmd)
-            #os.system(cmd)
-        #os.system('echo "" >> %s' % (resultFile))
+            cmd = 'python3 CollectResult.py %s/%s >> %s' % (libDir, rFile, resultFile)
+            print(cmd)
+            os.system(cmd)
+        os.system('echo "" >> %s' % (resultFile))
 
 
-
+'''
 
 ### run feature merging (community detection) for merged feature ###
 thresholdDict = {

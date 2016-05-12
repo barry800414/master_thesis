@@ -27,8 +27,10 @@ Todo:
     7. InDirect KMeans Single (can try, it will be very slow, running)
     8. InDirect KMeans Merge
 
-    Summary: KMeans is good, but it is too slow for direct feature merging, and direct feature merging can slightly better
+    Summary: KMeans is good, but it is too slow for direct feature merging, and direct feature merging can slightly better (done)
     Future work: Faster KMeans
+    
+    DONE
 
 3. Should investigate the sensitivity of threshold selection in community detection
     **see README.md in ./ResultAnalysis folder
@@ -37,6 +39,8 @@ Todo:
       2. ResultStat.py: calculating statistics about the result
 
     Summary: try to explain it is not sensitive, and general larger is better?
+
+    DONE
 
 4. Should inverstigate the physical meaning when merging features
     to do: model (how features are clustered and merged has been dumped), now is to analyze it 
@@ -50,7 +54,10 @@ Todo:
             other time complexity: 
             Lourvain method: ?
 
+    DONE
+
 6.  TODO: to find the list of "opinion operator", there are 3 papers to check
+    DONE
 
 7.  Divide (+1/-1) into 2 groups, instead of multiply it by -1
     TODO: 
@@ -61,4 +68,6 @@ Todo:
 
 10. discuss mult-task
 
+
+Other: update figures, change format
 

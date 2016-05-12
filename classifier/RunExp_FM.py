@@ -357,8 +357,11 @@ def trainFirstandFC_OneTask(XTrain, yTrain, XTest, preprocess, volc, adjSet):
     return ML.trainFirstandFC(XTrain, yTrain, XTest, preprocess, volc, adjSet)
 
 # The class for providing function to do machine learning procedure
+# version1: feature merging using whole training data -> find best parameters on merged training data 
+# version2: Find best parameters first -> feature merging on whole training data 
+#            '-> 10 fold the training data, for each validation phrase, do feature merging, then train and test
 class ML:
-    # version1
+    # version1: feature merging using whole training data -> find best parameters on merged training data 
     def GridSearchCVandTrainWithFC(XTrain, yTrain, XTest, preprocess, volc, 
             adjSet, clfName, scorerName, n_folds, randSeed, n_jobs=-1):
 
@@ -409,7 +412,6 @@ class ML:
         return predict
 
     # version2
-    # 10-fold -> train first time on val -> feature merge -> grid search -> train first on test -> feature merge
     def GridSearchCVandTrainWithFC_v2(XTrain, yTrain, XTest, preprocess, volc, adjSet,
             clfName, scorerName, n_folds, randSeed, n_jobs=-1):
         # find best parameters
@@ -480,7 +482,7 @@ class ML:
         print(X.shape, '--feature merge-->', X1.shape, '--remove df<2-->', X2.shape, file=sys.stderr)
         if preprocess is not None:
             X2 = DataTool.preprocessX(X2, preprocess['method'], preprocess['params'])
-            print(X2)
+            #print(X2)
         newXTrain = X2[0:XTrain.shape[0]]
         newXTest = X2[XTrain.shape[0]:]
         print('Train:', XTrain.shape, '->', newXTrain.shape, ' Test:', XTest.shape, '->', newXTest.shape, file=sys.stderr)
