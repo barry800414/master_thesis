@@ -1,4 +1,13 @@
 
+## Prerequisites
+* numpy
+* scipy
+* sklearn
+* networkx
+* [Louvain method for community detection](https://bitbucket.org/taynaud/python-louvain)
+
+
+
 This folder contains all the necessary files of my master thesis. 
 
 ## Introduction of each folder

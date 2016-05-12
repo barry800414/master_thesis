@@ -12,6 +12,14 @@ This folder contains all the core algorithms
 * ../feature/: Features pickle file 
 * ./featureMerge: all the adjacency list files 
 
+## Procedure overview
+* Normal training and testing: Raw features --training--> model --testing--> prediction
+* Direct Freature Clustering: Raw features -----clustering-----> Merged features --training--> model --testing--> prediction
+					  (community detection)
+					  (K-Means)
+* Two-side Feature Clustering: Raw features --training--> Two-side features --clustering for each side--> Merged features --training--> model --testing--> prediction
+
+
 ### Important information
          version 1    version 2
     Word      Word         Word
@@ -63,8 +71,6 @@ This folder contains all the core algorithms
 
 * wordVectorFile is in ./
 
-
-
 # Classifier Usage (all train one test framework)
     OneTestRun.py topic seedNum [-topic1 pickle -topic2 pickle ...] [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 -param2 value2]
     
@@ -79,4 +85,13 @@ for i in 2 3 4 5 13; do python3 ../CollectResult.py ./baseline/t${i}_baseline_df
 ## run merged
 for i in 3 4 5 13; do python3 ./Run.py ../feature/t${i}_v1.pickle 3 > ./merged/t${i}_v1_results.csv ; done
 for i in 3 4 5 13; do python3 ../CollectResult.py ./merged/t${i}_v1_results.csv >> merged_result.csv; done
+
+
+## Other possible direction (2016/05/12 update):
+* Multi-task learning (using other topics' data): [MALSAR] (http://www.public.asu.edu/~jye02/Software/MALSAR/)
+* Multi-level HMM (multi-level): 
+* Structure Learning (multi-level): [svm-sle] (http://projects.yisongyue.com/svmsle/)  
+* Latent Dirichlet Allocation (dimension reduction)
+* Word clustering (feature engineering)
+* Using Auto-encoder (using unlabeled data)
 
