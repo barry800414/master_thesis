@@ -1,18 +1,18 @@
 
 This folder contains all the core algorithms 
 
-## Prerequisites 
+### Prerequisites 
 * numpy
 * scipy
 * sklearn
 * networkx 
 * [Louvain method for community detection](https://bitbucket.org/taynaud/python-louvain)
 
-## Folders
+### Folders
 * ../feature/: Features pickle file 
 * ./featureMerge: all the adjacency list files 
 
-## Procedure overview
+### Procedure overview
 * Normal training and testing: Raw features --training--> model --testing--> prediction
 * Direct Freature Clustering: Raw features -----clustering-----> Merged features --training--> model --testing--> prediction
 					  (community detection)
@@ -43,7 +43,7 @@ This folder contains all the core algorithms
     In version 2, positive and negative are put in different groups, feature vector is the same
     Date: 2016/2/1
 
-## Normal training and testing (baseline)
+#### Normal training and testing (baseline)
     python3 Run.py pickleFile seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 -param2 value2]
     --fSelect -method chi -top 10
     --fSelect -method RFE -n_features_to_select 100 -step 10 
@@ -51,38 +51,38 @@ This folder contains all the core algorithms
     --fSelect -method LinearSVM -C 1.0
     --fSelect -method RF
 
-## Direct Feature clustering (using community detection) firstly, then normal training and testing (Direct Feature Merging, DFM)
+#### Direct Feature clustering (using community detection) firstly, then normal training and testing (Direct Feature Merging, DFM)
     python3 DFM.py pickleFile adjListFile seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]
     
 * pickleFile is in ../feature
 * adjListFile is in ./featureMerge
 
-## Direct Feature clustering (using K-means) firstly, then normal training and testing (Direct Feature Merging using Kmeans)
+#### Direct Feature clustering (using K-means) firstly, then normal training and testing (Direct Feature Merging using Kmeans)
     python3 DFM_KMeans.py pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle] [-nClusterFile jsonFile] [--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]
 
-## Feature clustering (using community detection) in each train&test phase. (Our proposed solution)
+#### Feature clustering (using community detection) in each train&test phase. (Our proposed solution)
     python3 FM.py pickleFile adjListFile version seedNum [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 ...] [--preprocess -method xxx -param1 value1 ...]
 
 * pickleFile is in ../feature
 * adjListFile is in ./featureMerge
 
-## Feature clustering (using K-Means) in each train&test phase.
+#### Feature clustering (using K-Means) in each train&test phase.
     python3 FM_KMeans.py pickleFile wordVectorFile nClusters seedNum [-outLogPickle LogPickle] [--preprocess -method xxx -param1 value1 ...]
 
 * wordVectorFile is in ./
 
-# Classifier Usage (all train one test framework)
+#### Classifier Usage (all train one test framework)
     OneTestRun.py topic seedNum [-topic1 pickle -topic2 pickle ...] [-outLogPickle LogPickle] [--fSelect -method xxx -param1 value1 -param2 value2]
     
 
-## run baseline (not PPAll)
+#### run baseline (not PPAll)
 for i in 2 3 4 5 13; do echo "run t${i}"; python3 Run.py ../feature/t${i}_baseline_df3.pickle 3 > ./baseline/t${i}_baseline_df3_results.csv; done
 for i in 2 3 4 5 13; do python3 ../CollectResult.py ./baseline/t${i}_baseline_df3_results.csv >> baseline_result.csv ; done
 
-## generating sentence-level (svm-sle) data
+#### generating sentence-level (svm-sle) data
 
 
-## run merged
+#### run merged
 for i in 3 4 5 13; do python3 ./Run.py ../feature/t${i}_v1.pickle 3 > ./merged/t${i}_v1_results.csv ; done
 for i in 3 4 5 13; do python3 ../CollectResult.py ./merged/t${i}_v1_results.csv >> merged_result.csv; done
 
