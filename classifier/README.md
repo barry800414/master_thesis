@@ -91,7 +91,7 @@ for i in 3 4 5 13; do python3 ../CollectResult.py ./merged/t${i}_v1_results.csv 
 * Multi-task learning (using other topics' data): [MALSAR] (http://www.public.asu.edu/~jye02/Software/MALSAR/)
 * Multi-level HMM (multi-level): 
 * Structure Learning (multi-level): [svm-sle] (http://projects.yisongyue.com/svmsle/)  
-* Latent Dirichlet Allocation (dimension reduction)
+* Labeled dimension reduction: Latent Dirichlet Allocation (dimension reduction)
 * Word clustering (feature engineering)
 * Using Auto-encoder (using unlabeled data)
 
