@@ -95,3 +95,12 @@ for i in 3 4 5 13; do python3 ../CollectResult.py ./merged/t${i}_v1_results.csv 
 * Word clustering (feature engineering)
 * Using Auto-encoder (using unlabeled data)
 
+
+## Procedure
+Raw text ---prerpocess --> ---feature extraction- features ---feature preprocess features ---training- model ---testing  prediction
+
+Preprocess: word clustering
+Feature extraction: name-entity extraction, better features, paragraph vector
+Feature preprocess: feature clustering, feature propagation, dimension reduction
+Training: multi-task learning, transfer learning, multi-level 
+
