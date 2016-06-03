@@ -3,12 +3,13 @@
 In this folder, we implemented the functions to extract features from preprocessed text, including 
 * Word-based feature: Bag-of-word, Bi-word, Tri-Word 
 * Dependency-based features:
+
 Firstly, you have to have preprocessed text, the format should like: 
 After running our program, there will be several pickle files containing features for later usage. 
 
 #### Bag-of-word feature
-  python3 WordFeature.py TaggedLabelNewsJson modelConfigFile
-  e.g. python3 WordFeature.py ../data/taggedLabelNews_5T_Merged_long.json ../config/WM_config.json
+    python3 WordFeature.py TaggedLabelNewsJson modelConfigFile
+    e.g. python3 WordFeature.py ../data/taggedLabelNews_5T_Merged_long.json ../config/WM_config.json
 
 #### Bi-word & Tri-word feature
     python3 BiWordFeature.py TaggedLabelNewsJson windowSize [-config configFile] 
@@ -27,7 +28,7 @@ After running our program, there will be several pickle files containing feature
 
 
 
-===以下待整理
+#以下待整理
 
   
 #### Topic Table
