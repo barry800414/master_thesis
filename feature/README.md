@@ -2,7 +2,7 @@
 ### Introduction
 In this folder, we implemented the functions to extract features from preprocessed text, including 
 * Word-based feature: Bag-of-word, Bi-word, Tri-Word 
-* Dependency-based features:
+* Dependency-based features: PT_SB, PT_TB, Full_SB, Full_TB
 
 Firstly, you have to have preprocessed text, the format should like: 
 After running our program, there will be several pickle files containing features for later usage. 
@@ -18,17 +18,23 @@ After running our program, there will be several pickle files containing feature
 * Tri-word:
     <code>python3 BiWordFeature.py ../data/taggedLabelNews_5T_Merged_long.json 3</code>
   
-#### depenedency feature
-     DepFeature.py DepParsedLabelNews ModelConfigFile NegPatternFile SentiDictFile
+#### Depenedency feature
+    DepFeature.py DepParsedLabelNews ModelConfigFile NegPatternFile SentiDictFile
+* Polarity-Target Pair filtered by sentiment lexicon(PT_SB): <br>
+    <code>python3 DepFeature.py ../data/DepParsedLabelNews_5T_Merged_long.json ../config/Dep_PP.json ../res/negPattern.json ../res/NTUSD_core.csv</code>
+* Polarity-Target Pair filtered by POS tag (PT_TB): <br>
+    <code>python3 DepFeature.py ../data/DepParsedLabelNews_5T_Merged_long.json ../config/Dep_PPAll.json ../res/negPattern.json ../res/NTUSD_core.csv</code>
+* Full Pair filtered by sentiment lexicon(Full_SB): <br>
+    <code>python3 DepFeature.py ../data/DepParsedLabelNews_5T_Merged_long.json ../config/Dep_Full.json ../res/negPattern.json ../res/NTUSD_core.csv</code>
+* Full Pair filtered by POS tag(Full_TB): <br>
+    <code>python3 DepFeature.py ../data/DepParsedLabelNews_5T_Merged_long.json ../config/Dep_FullAll.json ../res/negPattern.json ../res/NTUSD_core.csv</code>
 
 
 
 
 
 
-
-
-#以下待整理
+#以下待整理，不用看
 
   
 #### Topic Table
