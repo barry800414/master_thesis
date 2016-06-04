@@ -19,7 +19,7 @@ After running our program, there will be several pickle files containing feature
     <code>python3 BiWordFeature.py ../data/taggedLabelNews_5T_Merged_long.json 3</code>
   
 #### Depenedency feature
-    DepFeature.py DepParsedLabelNews ModelConfigFile NegPatternFile SentiDictFile
+    python3 DepFeature.py DepParsedLabelNews ModelConfigFile NegPatternFile SentiDictFile
 * Polarity-Target Pair filtered by sentiment lexicon(PT_SB): <br>
     <code>python3 DepFeature.py ../data/DepParsedLabelNews_5T_Merged_long.json ../config/Dep_PP.json ../res/negPattern.json ../res/NTUSD_core.csv</code>
 * Polarity-Target Pair filtered by POS tag (PT_TB): <br>
